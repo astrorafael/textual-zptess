@@ -25,6 +25,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine
 
+import anyio
+
 #--------------
 # local imports
 # -------------
@@ -84,4 +86,4 @@ def main():
     )
     args = parser.parse_args(sys.argv[1:])
     configure_logging(args)
-    asyncio.run(schema())
+    anyio.run(schema)

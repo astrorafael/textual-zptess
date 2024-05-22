@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
    'SQLAlchemy[asyncio]',
    'aiosqlite',
+   'anyio',
    'textual-dev'
 ]
 
