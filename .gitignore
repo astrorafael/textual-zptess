@@ -161,4 +161,4 @@ cython_debug/
 
 # My own stuff
 *.db
-src/_version.py
+src/zptess/_version.py
