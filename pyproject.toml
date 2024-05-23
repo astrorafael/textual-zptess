@@ -29,6 +29,7 @@ dependencies = [
    'SQLAlchemy[asyncio]',
    'aiosqlite',
    'anyio',
+   'httpx',
    'textual-dev'
 ]
 
@@ -44,6 +45,8 @@ Repository = "https://github.com/astrorafael/textual-zptess.git"
 [project.scripts]
 zptess = "zptess.main:main"
 schema = "zptess.dbase.schema:main"
+readings = "zptess.photometer.readings:main"
+info = "zptess.photometer.info:main"
 
 # pyproject.toml
 # Automatically generates a _version-py file from with Git information
