@@ -46,7 +46,7 @@ from zptess.photometer.protocol.photinfo  import HTMLInfo
 
 class TESSProtocolFactory:
 
-    def __init__(self, model, log, namespace, role, config_dao, old_payload, transport_method, tcp_deferred = None):
+    def __init__(self, model,  namespace, role, config_dao, old_payload, transport_method, tcp_deferred = None):
         self.log_msg = Logger(namespace=namespace)
         self.log     = log
         self.model = model
