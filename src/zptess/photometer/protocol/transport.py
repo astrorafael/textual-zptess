@@ -7,20 +7,16 @@
 #--------------------
 # System wide imports
 # -------------------
-
-import sys
-import json
 import socket
-import asyncio
 import logging
-
-
+import datetime
 
 # -----------------
 # Third Party imports
 # -------------------
 
 import anyio
+from pubsub import pub
 
 #--------------
 # local imports
@@ -39,32 +35,31 @@ from zptess.main import arg_parser, configure_logging
 # -----------------------
 
 # get the root logger
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 
 # -------------------
 # Auxiliary functions
 # -------------------
 
+class UDPTransport:
 
-async def readings():
-    async with await anyio.create_udp_socket(
-        family = socket.AF_INET, 
-        local_host = "0.0.0.0",
-        local_port = 2255
-    ) as udp:
-        async for packet, (host, port) in udp:
-            log.info(json.loads(packet.decode()))
-        
+	def __init__(self, host='0.0.0.0', port=2255):
+		self.local_host = host
+		self.local_port = port
+
+	async def readings(self):
+	    async with await anyio.create_udp_socket(
+	        family = socket.AF_INET, 
+	        local_host = self.local_host,
+	        local_port = self.local_port
+	    ) as udp:
+	        async for payload, (host, port) in udp:
+	        	now = datetime.datetime.now(datetime.timezone.utc)
+	        	pub.sendMessage('reading', timestamp=now, payload=payload)
+	        	log.info("%s => %s", now, payload)  
 
 
+class SerialTransport:
+	pass
 
-def main():
-    parser = arg_parser(
-        name = __name__,
-        version = __version__,
-        description = "Example UDP read I/O"
-    )
-    args = parser.parse_args(sys.argv[1:])
-    configure_logging(args)
-    logging.info("Preparing to listen to UDP")
-    anyio.run(readings)
+

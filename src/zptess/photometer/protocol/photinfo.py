@@ -25,7 +25,7 @@ import httpx
 # -------------
 
 
-from zptess import __version__
+from zptess import REF, TEST
 from zptess.main import arg_parser, configure_logging
 
 # ----------------
@@ -44,7 +44,8 @@ def formatted_mac(mac):
     ''''Corrects TESS-W MAC strings to be properly formatted'''
     return ':'.join(f"{int(x,16):02X}" for x in mac.split(':'))
 
-class HTMLPhotometer:
+
+class HTMLInfo:
     """
     Get the photometer by parsing the HTML photometer home page.
     Set the new ZP by using the same URL as the HTML form displayed for humans
@@ -63,17 +64,17 @@ class HTMLPhotometer:
         'flash' : re.compile(r"New Zero Point (\d{1,2}\.\d{1,2})"),   
     }
 
-    def __init__(self, addr, label):
+    def __init__(self, role, addr):
         self.log = logging.getLogger(__name__)
         self.addr = addr
-        self.label = label
+        self.label = REF.lower() if role == 'ref' else TEST.lower()
         log.info("%s Using %s Info", self.label, self.__class__.__name__)
 
     # ---------------------
     # IPhotometerControl interface
     # ---------------------
 
-    async def getInfo(self, timeout):
+    async def get_info(self, timeout=60):
         '''
         Get photometer information. 
         '''
@@ -112,7 +113,7 @@ class HTMLPhotometer:
         return result
 
 
-    async def saveZeroPoint(self, zero_point):
+    async def save_zero_point(self, zero_point):
         '''
         Writes Zero Point to the device. 
         '''
@@ -142,23 +143,43 @@ class HTMLPhotometer:
         return f"http://{self.addr}/setconst"
 
 
+class DBasePhotometer:
+
+    def __init__(self, role, dbase_url):
+        self.log = logging.getLogger(__name__)
+        self.url = dbase_url
+        self.section = 'reference' if role == 'ref' else 'test'
+        self.label = REF.lower() if role == 'ref' else TEST.lower()
+        log.info("%6s Using %s Info", self.label, self.__class__.__name__)
+
+
+    # ---------------------
+    # IPhotometerControl interface
+    # ---------------------
+
+    async def save_zero_point(self, zero_point):
+        '''
+        Writes Zero Point to the device. 
+        '''
+        raise NotImplementedError()
+
+
+    async def get_info(self, timeout):
+        '''
+        Get photometer information. 
+        '''
+        raise NotImplementedError()
+        # label = self.label
+        # self.log.info("==> {label:6s} [SQL] from config_t, section '{section}'", label=label, section=self.section)
+        # result = yield self.config_dao.loadSection(self.section)
+        # self.log.info("<== {label:6s} [SQL] returns {result}", label=label, result=result)
+        # result['tstamp'] = datetime.datetime.now(datetime.timezone.utc)
+        # result['zp']    = float(result['zp'])
+        # result['freq_offset'] = float(result['freq_offset'])
+        # result['old_proto'] = int(result['old_proto'])
+        # return(result)
+
+
 # -------------------
 # Auxiliary functions
 # -------------------
-
-async def info():
-    photometer = HTMLPhotometer('192.168.4.1', 'TEST')
-    info = await photometer.getInfo(timeout=60)
-    log.info(info)
-   
-
-def main():
-    parser = arg_parser(
-        name = __name__,
-        version = __version__,
-        description = "Example UDP read I/O"
-    )
-    args = parser.parse_args(sys.argv[1:])
-    configure_logging(args)
-    logging.info("Preparing to get photometer info")
-    anyio.run(info)

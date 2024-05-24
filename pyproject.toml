@@ -26,6 +26,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Atmospheric Science",
 ]
 dependencies = [
+   'pypubsub',   # Publish/Subscribe support Model/View/Controller
    'SQLAlchemy[asyncio]',
    'aiosqlite',
    'anyio',
@@ -45,8 +46,7 @@ Repository = "https://github.com/astrorafael/textual-zptess.git"
 [project.scripts]
 zptess = "zptess.main:main"
 schema = "zptess.dbase.schema:main"
-readings = "zptess.photometer.readings:main"
-info = "zptess.photometer.info:main"
+phot = "zptess.photometer.service:main"
 
 # pyproject.toml
 # Automatically generates a _version-py file from with Git information
@@ -67,4 +67,4 @@ script-files = [
 
 # Needed for Textual CSS files
 [tool.setuptools.package-data]
-"zptess.dbase" = ["*.tcss"]
+"zptess.tui.css" = ["*.css"]
