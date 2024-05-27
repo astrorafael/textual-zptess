@@ -19,7 +19,7 @@ import logging
 
 from textual import on
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Label, Button, Static
+from textual.widgets import Header, Footer, Log, Label, Button, Static
 from textual.containers import ScrollableContainer
 
 #--------------
@@ -63,6 +63,8 @@ class ZpTessApp(App[str]):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()
+        yield Log(id="reflog")
+        yield Log(id="testlog")
         with ScrollableContainer(id="contenido"):
             pass
       

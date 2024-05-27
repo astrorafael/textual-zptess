@@ -1,3 +1,11 @@
 Footer {
 	height: 1;
 }
+
+#reflog {
+	background: blue;
+}
+
+#testlog {
+	background: grey;
+}
