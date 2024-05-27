@@ -48,6 +48,10 @@ log = logging.getLogger()
 
 class ZpTessApp(App[str]):
 
+    TITLE = "ZPTESS"
+    SUB_TITLE = "TESS-W Zero Point Calibration tools"
+
+    # Seems the bindings are for the Footer widget
     BINDINGS = [
         ("q", "quit", "Quit Application")
     ]
