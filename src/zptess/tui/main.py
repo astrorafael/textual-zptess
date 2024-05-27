@@ -73,8 +73,8 @@ class ZpTessApp(App[str]):
         yield Header(show_clock=True)
         yield Footer()
         yield DataTable()
-        yield Log(id="reflog")
-        yield Log(id="testlog")
+        yield Log(id="reflog", classes="box")
+        yield Log(id="testlog", classes="box")
         #with ScrollableContainer(id="contenido"):
             #pass
 
@@ -92,6 +92,8 @@ class ZpTessApp(App[str]):
     @on(Button.Pressed, '#yes')
     def yes_pressed(self) -> None:
         self.exit(return_code=3)
+        foo
+        textual.sleep(3000)
 
 
 def main():

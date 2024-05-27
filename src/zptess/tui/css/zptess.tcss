@@ -3,9 +3,13 @@ Footer {
 }
 
 #reflog {
-	background: blue;
+	background: darkblue;
 }
 
 #testlog {
-	background: grey;
+	background: black;
+}
+
+.box {
+    border: solid green;
 }
