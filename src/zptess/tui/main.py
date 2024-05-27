@@ -18,7 +18,8 @@ import logging
 
 from textual import on
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Label, Button
+from textual.widgets import Header, Footer, Label, Button, Static
+from textual.containers import ScrollableContainer
 
 #--------------
 # local imports
@@ -46,10 +47,19 @@ log = logging.getLogger()
 
 class ZpTessApp(App[str]):
 
+    BINDINGS = [
+        ("q", "quit", "Quit Application")
+    ]
+
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()
+        with ScrollableContainer(id="contenido"):
+            pass
       
+    def action_quit(self):
+        self.exit(return_code=2)
+
     @on(Button.Pressed, '#yes')
     def yes_pressed(self) -> None:
         self.exit(return_code=3)

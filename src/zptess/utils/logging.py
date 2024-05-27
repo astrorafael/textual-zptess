@@ -41,7 +41,7 @@ def configure(args):
         ch.setLevel(logging.DEBUG)
         log.addHandler(ch)
     elif args.textual:
-        import textual
+        import textual.logging
         ch = textual.logging.TextualHandler()
         ch.setFormatter(fmt)
         ch.setLevel(logging.DEBUG)
