@@ -8,6 +8,7 @@
 # System wide imports
 # -------------------
 
+import os
 import sys
 import argparse
 import logging
@@ -49,6 +50,10 @@ class ZpTessApp(App[str]):
 
     BINDINGS = [
         ("q", "quit", "Quit Application")
+    ]
+
+    CSS_PATH = [
+        os.path.join("css", "zptess.tcss"),
     ]
 
     def compose(self) -> ComposeResult:
