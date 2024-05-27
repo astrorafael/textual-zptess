@@ -82,6 +82,9 @@ class ZpTessApp(App[str]):
         table = self.query_one(DataTable)
         table.add_columns(*ROWS[0])
         table.add_rows(ROWS[1:])
+        table.fixed_rows = 2
+        table.fixed_columns = 6
+        table.zebra_stripes = True
       
     def action_quit(self):
         self.exit(return_code=2)
