@@ -19,7 +19,7 @@ import logging
 
 from textual import on
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Log, Label, Button, Static
+from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static
 from textual.containers import ScrollableContainer
 
 #--------------
@@ -45,6 +45,15 @@ log = logging.getLogger()
 # Auxiliary functions
 # -------------------
 
+ROWS = [
+    ("Property", "Value"),
+    ("Name", "stars1"),
+    ("Role", "TEST"),
+    ("MAC address", "AA:BB:CC:DD:EE:FF"),
+    ("Zero Point",  20.50),
+    ("Freq. Offset", 0.0),
+]
+
 
 class ZpTessApp(App[str]):
 
@@ -63,10 +72,16 @@ class ZpTessApp(App[str]):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()
+        yield DataTable()
         yield Log(id="reflog")
         yield Log(id="testlog")
-        with ScrollableContainer(id="contenido"):
-            pass
+        #with ScrollableContainer(id="contenido"):
+            #pass
+
+    def on_mount(self) -> None:
+        table = self.query_one(DataTable)
+        table.add_columns(*ROWS[0])
+        table.add_rows(ROWS[1:])
       
     def action_quit(self):
         self.exit(return_code=2)
