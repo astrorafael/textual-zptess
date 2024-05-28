@@ -83,9 +83,9 @@ class SerialTransport:
         async with anyio_serial.Serial(
             port = self.port, 
             baudrate = self.baudrate
-        ) as port:
+        ) as serial_port:
             while True:
-                payload = await port.receive_until(delimiter=b'\n', max_bytes = 4096):
+                payload = await serial_port.receive_until(delimiter=b'\n', max_bytes = 4096):
                 now = datetime.datetime.now(datetime.timezone.utc)
                 pub.sendMessage('reading', timestamp=now, payload=payload)
                 log.info("%s => %s", now, payload)
