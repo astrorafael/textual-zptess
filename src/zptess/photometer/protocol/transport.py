@@ -75,14 +75,14 @@ class TCPTransport:
 
 class SerialTransport:
     
-    def __init__(self, port="/dev/ttyUSB0", baud=9600):
-        self.baud = baud
+    def __init__(self, port="/dev/ttyUSB0", baudrate=9600):
+        self.baudrate = baudrate
         self.port = port
 
     async def readings(self):
         async with anyio_serial.Serial(
             port = self.port, 
-            baudrate = self.baud
+            baudrate = self.baudrate
         ) as port:
             async for payload in port:
                 now = datetime.datetime.now(datetime.timezone.utc)

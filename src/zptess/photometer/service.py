@@ -194,7 +194,7 @@ async def async_main():
     
     from zptess import __version__
     from zptess.photometer.protocol.transport import UDPTransport, SerialTransport
-    from zptess.photometer.protocol.photinfo import HTMLInfo
+    from zptess.photometer.protocol.photinfo import HTMLInfo, DBaseInfo
     from zptess.utils.argsparse import args_parser
     from zptess.utils.logging import configure
 
@@ -205,6 +205,13 @@ async def async_main():
     )
     args = parser.parse_args(sys.argv[1:])
     configure(args)
+    logging.info("Obtaining Photometer info")
+    photinfo = DBaseInfo('ref')
+    info = await photinfo.get_info()
+    logging.info(info)
+    logging.info("Saving new zero point")
+    await photinfo.save_zero_point(20.44)
+   
     logging.info("Preparing to listen to UDP")
     transport1 = UDPTransport()
     transport2 = SerialTransport()

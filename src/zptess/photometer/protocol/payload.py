@@ -19,6 +19,8 @@ import json
 # local imports
 # -------------
 
+from zptess.utils.misc import label
+
 # ----------------
 # Module constants
 # ----------------
@@ -60,9 +62,9 @@ class OldPayload:
     )
     UNSOLICITED_PATTERNS = [ re.compile(ur['pattern']) for ur in UNSOLICITED_RESPONSES ]
 
-    def __init__(self, label, log_msg):
-        self.log   = log_msg
-        self.label = label
+    def __init__(self, role):
+        self.log   = logging.getLogger(__name__)
+        self.label = label(role)
         log.info("%6s: Using %s decoder", self.label, self.__class__.__name__)
      
     # ----------------------------
@@ -117,9 +119,9 @@ class JSONPayload:
     Decodes new JSON style TESS payload:
     """
 
-    def __init__(self, label, log_msg):
-        self.label = label
-        self.log = log_msg
+    def __init__(self, role):
+        self.label = label(role)
+        self.log = logging.getLogger(__name__)
         log.info("%6s: Using %s decoder", self.label, self.__class__.__name__)
 
     # ----------------------------

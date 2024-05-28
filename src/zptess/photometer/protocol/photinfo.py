@@ -21,11 +21,14 @@ import anyio
 import httpx
 import decouple
 
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+
 #--------------
 # local imports
 # -------------
 
-from zptess import REF, TEST
+from zptess.utils.misc import label
 
 # ----------------
 # Module constants
@@ -66,7 +69,7 @@ class HTMLInfo:
     def __init__(self, role, addr):
         self.log = logging.getLogger(__name__)
         self.addr = addr
-        self.label = REF.lower() if role == 'ref' else TEST.lower()
+        self.label = label(role)
         log.info("%s Using %s Info", self.label, self.__class__.__name__)
 
     # ---------------------
@@ -142,15 +145,15 @@ class HTMLInfo:
         return f"http://{self.addr}/setconst"
 
 
-class DBasePhotometer:
+class DBaseInfo:
 
-    def __init__(self, role, dbase_url):
+    def __init__(self, role):
         self.log = logging.getLogger(__name__)
         self.role = role
-        self.section = 'ref-device' if role == 'ref' else 'test-device'
-        self.label = REF.lower() if role == 'ref' else TEST.lower()
-        log.info("%6s Using %s Info", self.label, self.__class__.__name__)
-        self.url = decouple.config('DATABASE_URL')
+        self.label = label(role)
+        self.log.info("%6s Using %s Info", self.label, self.__class__.__name__)
+        url = decouple.config('DATABASE_URL')
+        self.engine = create_async_engine(url)
 
     # ---------------------
     # IPhotometerControl interface
@@ -160,22 +163,29 @@ class DBasePhotometer:
         '''
         Writes Zero Point to the device. 
         '''
-        raise NotImplementedError()
+        if self.role == 'test':
+            raise NotImplementedError("Can't save Zero Point on a database for the %s device", self.label)
+        section = 'ref-device' if self.role == 'ref' else 'test-device'
+        prop = 'zp'
+        zero_point = str(zero_point)
+        async with self.engine.begin() as conn:
+            await conn.execute(text("UPDATE config_t SET value = :value WHERE section = :section AND property = :property"), 
+                {"section": section, "property": "zp" , "value": zero_point}
+            )
+            await conn.commit()
 
 
-    async def get_info(self, timeout):
+    async def get_info(self, timeout=None):
         '''
         Get photometer information. 
         '''
-        log.info("Creating schema")
-        engine = create_async_engine("sqlite+aiosqlite:///zptess.db", echo=True)
-        async with engine.begin() as conn:
+        section = 'ref-device' if self.role == 'ref' else 'test-device'
+        async with self.engine.begin() as conn:
             result = await conn.execute(text("SELECT property, value FROM config_t WHERE section = :section"), 
                 {"section": section}
             )
-        for row in result:
-            self.log.info(row)   
-        await engine.dispose()
+            result = { row[0]: row[1] for row in result}
+        return result
 
 
 # -------------------
