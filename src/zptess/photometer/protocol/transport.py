@@ -16,6 +16,8 @@ import datetime
 # -------------------
 
 import anyio
+import anyio_serial
+
 from pubsub import pub
 
 #--------------
@@ -77,4 +79,12 @@ class SerialTransport:
         self.baud = baud
         self.port = port
 
-
+    async def readings(self):
+        async with anyio_serial.Serial(
+            port = self.port, 
+            baudrate = self.baud
+        ) as port:
+            async for payload in port.receive():
+                now = datetime.datetime.now(datetime.timezone.utc)
+                pub.sendMessage('reading', timestamp=now, payload=payload)
+                log.info("%s => %s", now, payload)
