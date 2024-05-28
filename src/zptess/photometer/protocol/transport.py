@@ -84,7 +84,8 @@ class SerialTransport:
             port = self.port, 
             baudrate = self.baudrate
         ) as port:
-            async for payload in port:
+            while True:
+                payload = await port.receive_until(delimiter=b'\n', max_bytes = 4096):
                 now = datetime.datetime.now(datetime.timezone.utc)
                 pub.sendMessage('reading', timestamp=now, payload=payload)
                 log.info("%s => %s", now, payload)
