@@ -72,6 +72,9 @@ class TCPTransport:
 
 
 class SerialTransport:
-    pass
+    
+    def __init__(self, port="/dev/ttyUSB0", baud=9600):
+        self.baud = baud
+        self.port = port
 
 

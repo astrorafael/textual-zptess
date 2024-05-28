@@ -27,11 +27,30 @@ import anyio
 from zptess import __version__, REF, TEST
 from zptess.main import arg_parser, configure_logging
 
+class Deduplicater:
+    '''Removes duplicates readings in TESS JSON payloads'''
+
+    def __init__(self, role, log):
+        self._role     = role
+        self.log       = log
+        self._prev_seq = None
+
+    def write(self, data):
+        cur_seq = data.get('udp', None)
+        if cur_seq is not None and cur_seq != self._prev_seq:
+            self._prev_seq = cur_seq
+            pub.sendMessage('phot_sample', role=self._role, sample=data)
+        elif cur_seq is None:
+            pub.sendMessage('phot_sample', role=self._role, sample=data) # old protocol, not JSON protocol
+
+
+
 class PhotometerService:
 
     NAME = "Photometer Service"
 
     def __init__(self, options, isRef):
+        self.log = logging.getLogger(__name__)
         self.options = options
         self.isRef   = isRef  # Flag, is this instance for the reference photometer
         if isRef: 
@@ -41,56 +60,41 @@ class PhotometerService:
         else:
             self.role = 'test'
             self.label = TEST.lower()
-        self.log = logging.getLogger(__name__)
         proto, addr, port = chop(self.options['endpoint'], sep=':')
         self.factory   = self.buildFactory(options['old_proto'], proto)
            
   
-    def start(self):
+    async def start(self):
         '''
         Starts the photometer service listens to a TESS
         Although it is technically a synchronous operation, it works well
         with inline callbacks
         '''
-        self.log.info("Starting {name}", name=self.name)
-        setLogLevel(namespace=self.msgspace, levelStr=self.options['log_messages'])
-        setLogLevel(namespace=self.label,    levelStr=self.options['log_level'])
+        self.log.info("Starting %s", self.name)
         self.protocol  = None
         self.info      = None # Photometer info
         self.deduplicater = Deduplicater(self.role, self.log)
         pub.subscribe(self.onUpdateZeroPoint, 'calib_flash_zp')
-        super().startService() # se we can handle the 'running' attribute
         # Async part form here ...
         try:
             self.info = None
-            yield self.connect()
-            self.info = yield self.getPhotometerInfo()
-        except DeferredTimeoutError as e:
-            self.log.critical("Timeout {excp}",excp=e)
-            pub.sendMessage('phot_offline', role=self.role)
-            return(None)
-        except ConnectError as e:
-            self.log.critical("{excp}",excp=e)
-            pub.sendMessage('phot_offline', role=self.role)
-            return(None)
+            await self.connect()
+            self.info = await self.getPhotometerInfo()
         except Exception as e:
-            self.log.failure("{excp}",excp=e)
+            self.log.error("%s", e)
             pub.sendMessage('phot_offline', role=self.role)
-            return(None)
         if self.info is None:
             pub.sendMessage('phot_offline', role=self.role)
-            return(None)
         pub.sendMessage('phot_info', role=self.role, info=self.info)
-        return(None)
 
 
 
-    def stop(self):
-        self.log.info("Stopping {name}", name=self.name)
+    async def stop(self):
+        self.log.info("Stopping %s", self.name)
         if self.protocol:
             self.protocol.stopProducing()
             if self.protocol.transport:
-                self.log.info("Closing transport {e}", e=self.options['endpoint'])
+                self.log.info("Closing transport %s", self.options['endpoint'])
                 self.protocol.transport.loseConnection()
             self.protocol = None
             pub.unsubscribe(self.onUpdateZeroPoint, 'calib_flash_zp')
@@ -100,22 +104,20 @@ class PhotometerService:
     # Photometer API 
     # --------------
 
-    def on_update_zero_point(self, zero_point):
+    async def on_update_zero_point(self, zero_point):
         if not self.isRef:
-            reactor.callLater(0, self.writeZeroPoint, zero_point)
+            await self.save_zero_point(zero_point)
 
 
-    def save_zero_point_(self, zero_point):
+    async def save_zero_point_(self, zero_point):
         '''Writes Zero Point to the device.'''
-        self.log.info("[{label}] Updating ZP : {zp:0.2f}", label=self.label, zp = zero_point)
+        self.log.info("[%s] Updating ZP : %0.2f", self.label, zero_point)
         try:
-            yield self.protocol.writeZeroPoint(zero_point)
-        except DeferredTimeoutError as e:
-            self.log.error("Timeout when reading photometer info ({e})",e=e)
+            await self.protocol.writeZeroPoint(zero_point)
         except Exception as e:
-            self.log.failure("{e}",e=e)
+            self.log.error("%s",e)
         else:
-            self.log.info("[{label}] Updated ZP : {zp:0.2f}", label=self.label, zp = zero_point)
+            self.log.info("[%s] Updated ZP : %0.2f", self.label, zero_point)
 
     # --------------
     # Helper methods
@@ -142,13 +144,13 @@ class PhotometerService:
             self.log.info("listening on UCP endpoint {endpoint}", endpoint=self.options['endpoint'])
 
 
-    def getPhotometerInfo(self):
-        info = yield self.protocol.getPhotometerInfo()
+    async def getPhotometerInfo(self):
+        info = await self.protocol.getPhotometerInfo()
         info['model'] = self.options['model']
         info['sensor'] = self.options['sensor']
         info['label'] = self.label
         info['role']  = self.role
-        return(info)
+        return info
 
     
     def get_protocol(self, old_payload, proto):

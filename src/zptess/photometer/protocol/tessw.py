@@ -15,9 +15,10 @@ import datetime
 # local imports
 # -------------
 
-
+from zptess.photometer.protocol.transport import UDPTransport, TCPTransport, SerialTransport
 from zptess.photometer.protocol.payload   import JSONPayload, OldPayload
 from zptess.photometer.protocol.photinfo  import HTMLInfo
+
 
 # ----------------
 # Module constants
@@ -28,6 +29,7 @@ from zptess.photometer.protocol.photinfo  import HTMLInfo
 # Module global variables
 # -----------------------
 
+log = logging.getLogger(__name__)
 
 # ----------------
 # Module functions
@@ -48,6 +50,72 @@ class TESSProtocolFactory:
 
     def __init__(self, model,  namespace, role, config_dao, old_payload, transport_method, tcp_deferred = None):
         self.log_msg = Logger(namespace=namespace)
+        self.log     = log
+        self.model = model
+        self.old_payload = old_payload
+        self.transport_method = transport_method
+        self.config_dao = config_dao
+        self.section = "ref-device" if role == 'ref' else 'test-device'
+        self.tcp_deferred = tcp_deferred # Handles notification of client TCP connections
+
+    def startedConnecting(self, connector):
+        self.log.debug('Factory: Started to connect.')
+
+    def clientConnectionLost(self, connector, reason):
+        self.log.debug('Factory: Lost connection. Reason: {reason}', reason=reason)
+
+    def clientConnectionFailed(self, connector, reason):
+        self.log.debug('Factory: Connection failed. Reason: {reason}', reason=reason)
+
+    def buildProtocol(self, addr):
+        if isinstance(addr, IPv4Address):
+            addr = addr.host
+
+        if self.transport_method == 'serial' and self.section == 'ref-device':
+            photinfo_obj = DBasePhotometer(
+                config_dao = self.config_dao, 
+                section    = self.section, 
+                label      = self.model,
+                log        = self.log,
+                log_msg    = self.log_msg,
+            )
+        else:
+            photinfo_obj = HTMLPhotometer(
+                addr    = addr, 
+                label   = self.model,
+                log     = self.log,
+                log_msg = self.log_msg
+            )
+        if self.transport_method == 'udp':
+            payload_obj = JSONPayload(
+                label   = self.model, 
+                log     = self.log,
+                log_msg = self.log_msg,
+            )
+            return TESSUDPProtocol(self, payload_obj, photinfo_obj, self.model)
+        if self.old_payload:
+             payload_obj = OldPayload(
+                label   = self.model, 
+                log     = self.log,
+                log_msg = self.log_msg)
+        else:
+            payload_obj = JSONPayload(
+                label   = self.model, 
+                log     = self.log,
+                log_msg = self.log_msg
+            )
+        return TESSStreamProtocol(
+            factory      = self, 
+            payload_obj  = payload_obj, 
+            photinfo_obj = photinfo_obj, 
+            label        = self.model
+        )
+
+
+
+class TESSProtocolFactory:
+
+    def __init__(self, model, role, transport_method, old_payload=False):
         self.log     = log
         self.model = model
         self.old_payload = old_payload
