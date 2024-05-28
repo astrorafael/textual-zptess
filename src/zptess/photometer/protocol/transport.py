@@ -84,7 +84,7 @@ class SerialTransport:
             port = self.port, 
             baudrate = self.baud
         ) as port:
-            async for payload in port.receive():
+            async for payload in port:
                 now = datetime.datetime.now(datetime.timezone.utc)
                 pub.sendMessage('reading', timestamp=now, payload=payload)
                 log.info("%s => %s", now, payload)

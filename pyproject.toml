@@ -26,16 +26,17 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Atmospheric Science",
 ]
 dependencies = [
-   'pypubsub',   # Publish/Subscribe support Model/View/Controller
-   # Async Database stuff
-   'SQLAlchemy[asyncio]',
-   'aiosqlite',
-   # Async I/O
-   'anyio',
-   'anyio-serial',
-   'httpx',
-   # text User Interface
-   'textual-dev'
+  'python-decouple',  # Get info from enviromental variables
+  'pypubsub',         # Publish/Subscribe support Model/View/Controller
+  # Async Database stuff
+  'SQLAlchemy[asyncio]',
+  'aiosqlite',
+  # Async I/O
+  'anyio',
+  'anyio-serial',
+  'httpx',
+  # text User Interface
+  'textual-dev'
 ]
 
 [project.optional-dependencies]

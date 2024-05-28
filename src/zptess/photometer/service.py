@@ -24,8 +24,7 @@ import anyio
 # local imports
 # -------------
 
-from zptess import __version__, REF, TEST
-from zptess.main import arg_parser, configure_logging
+from zptess import REF, TEST
 
 class Deduplicater:
     '''Removes duplicates readings in TESS JSON payloads'''
@@ -193,22 +192,25 @@ class PhotometerService:
 
 async def async_main():
     
-    from zptess.photometer.protocol.transport import UDPTransport
+    from zptess import __version__
+    from zptess.photometer.protocol.transport import UDPTransport, SerialTransport
     from zptess.photometer.protocol.photinfo import HTMLInfo
+    from zptess.utils.argsparse import args_parser
+    from zptess.utils.logging import configure
 
-    parser = arg_parser(
+    parser = args_parser(
         name = __name__,
         version = __version__,
         description = "Example UDP read I/O"
     )
     args = parser.parse_args(sys.argv[1:])
-    configure_logging(args)
+    configure(args)
     logging.info("Preparing to listen to UDP")
-    transport = UDPTransport()
-    photinfo = HTMLInfo('test', '192.168.4.1')
+    transport1 = UDPTransport()
+    transport2 = SerialTransport()
     async with anyio.create_task_group() as tg:
-        tg.start_soon(transport.readings)
-        tg.start_soon(photinfo.get_info)
+        tg.start_soon(transport1.readings)
+        tg.start_soon(transport2.readings)
 
 
 def main():

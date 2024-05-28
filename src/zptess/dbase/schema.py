@@ -19,7 +19,7 @@ from datetime import datetime
 # SQLAlchemy imports
 # -------------------
 
-from sqlalchemy import create_engine, String, ForeignKey
+from sqlalchemy import create_engine, String, ForeignKey, PrimaryKeyConstraint
 
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column, relationship
@@ -31,9 +31,6 @@ import anyio
 #--------------
 # local imports
 # -------------
-
-from zptess import __version__
-from zptess.main import arg_parser, configure_logging
 
 # ----------------
 # Module constants
@@ -51,6 +48,24 @@ log = logging.getLogger(__name__)
 # ---------------------
 
 Base = declarative_base()
+
+class Config(Base):
+
+    __tablename__ = "config_t"
+
+    section:   Mapped[str] = mapped_column(String(32))
+    prop:      Mapped[str] = mapped_column('property', String(255))
+    value:     Mapped[str] = mapped_column(String(255))
+
+    __table_args__ = (
+        PrimaryKeyConstraint(
+            section,
+            prop),
+        {})
+
+    def __repr__(self) -> str:
+        return f"TESS(id={self.id!r}, nname={self.name!r}, mac={self.mac!r})"
+
 
 class Tess(Base):
 
@@ -94,18 +109,25 @@ class Samples(Base):
 async def schema() -> None:
     '''The main entry point specified by pyproject.toml'''
     log.info("Creating schema")
-    engine = create_async_engine("sqlite+aiosqlite:///zptext.db", echo=True)
+    engine = create_async_engine("sqlite+aiosqlite:///zptess.db", echo=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+        #await conn.run_sync(Base.metadata.create_all)
     await engine.dispose()
 
 def main():
-    parser = arg_parser(
+
+    from zptess import __version__
+    from zptess.photometer.protocol.transport import UDPTransport, SerialTransport
+    from zptess.photometer.protocol.photinfo import HTMLInfo
+    from zptess.utils.argsparse import args_parser
+    from zptess.utils.logging import configure
+
+    parser = args_parser(
         name = __name__,
         version = __version__,
         description = "Example Textual App"
     )
     args = parser.parse_args(sys.argv[1:])
-    configure_logging(args)
+    configure(args)
     anyio.run(schema)

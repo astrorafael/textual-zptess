@@ -115,29 +115,19 @@ class TESSProtocolFactory:
 
 class TESSProtocolFactory:
 
-    def __init__(self, model, role, transport_method, old_payload=False):
+    def __init__(self, model, role, transport_method, old_payload=False, **kwargs):
         self.log     = log
-        self.model = model
-        self.old_payload = old_payload
-        self.transport_method = transport_method
-        self.config_dao = config_dao
-        self.section = "ref-device" if role == 'ref' else 'test-device'
-        self.tcp_deferred = tcp_deferred # Handles notification of client TCP connections
+        self._model = model
+        self._old_payload = old_payload
+        self._transport_method = transport_method
+        self._section = "ref-device" if role == 'ref' else 'test-device'
+        self._kw = kwargs
 
-    def startedConnecting(self, connector):
-        self.log.debug('Factory: Started to connect.')
-
-    def clientConnectionLost(self, connector, reason):
-        self.log.debug('Factory: Lost connection. Reason: {reason}', reason=reason)
-
-    def clientConnectionFailed(self, connector, reason):
-        self.log.debug('Factory: Connection failed. Reason: {reason}', reason=reason)
-
-    def buildProtocol(self, addr):
-        if isinstance(addr, IPv4Address):
-            addr = addr.host
+    def build(self):
 
         if self.transport_method == 'serial' and self.section == 'ref-device':
+            transport_obj = SerialTransport(**self._kw)
+            payload_obj = None
             photinfo_obj = DBasePhotometer(
                 config_dao = self.config_dao, 
                 section    = self.section, 

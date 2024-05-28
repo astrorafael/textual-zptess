@@ -19,14 +19,13 @@ import logging
 
 import anyio
 import httpx
+import decouple
 
 #--------------
 # local imports
 # -------------
 
-
 from zptess import REF, TEST
-from zptess.main import arg_parser, configure_logging
 
 # ----------------
 # Module constants
@@ -147,10 +146,11 @@ class DBasePhotometer:
 
     def __init__(self, role, dbase_url):
         self.log = logging.getLogger(__name__)
-        self.url = dbase_url
+        self.url = decouple.config('DATABASE_URL')
         self.section = 'reference' if role == 'ref' else 'test'
         self.label = REF.lower() if role == 'ref' else TEST.lower()
         log.info("%6s Using %s Info", self.label, self.__class__.__name__)
+        # Missing all sqlalchemy reading stuff
 
 
     # ---------------------
