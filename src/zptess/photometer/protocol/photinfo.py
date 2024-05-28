@@ -84,6 +84,7 @@ class HTMLInfo:
         result = {}
         result['tstamp'] = datetime.datetime.now(datetime.timezone.utc)
         url = self._make_state_url()
+        self.log.info("%6s  get info from %s", label, url)
         async with httpx.AsyncClient() as client:
             response = await client.get(url, timeout=timeout)
             text = response.text

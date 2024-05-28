@@ -40,8 +40,8 @@ log = logging.getLogger(__name__)
 
 class UDPTransport:
 
-    def __init__(self, host='0.0.0.0', port=2255):
-        self.local_host = host
+    def __init__(self, port=2255):
+        self.local_host = '0.0.0.0'
         self.local_port = port
 
     async def readings(self):

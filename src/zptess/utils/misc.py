@@ -9,10 +9,10 @@ from zptess import TEST, REF
 def chop(string, sep=None):
     '''Chop a list of strings, separated by sep and 
     strips individual string items from leading and trailing blanks'''
-    chopped = [ elem.strip() for elem in string.split(sep) ]
+    chopped = tuple(elem.strip() for elem in string.split(sep) )
     if len(chopped) == 1 and chopped[0] == '':
-    	chopped = []
+    	chopped = tuple()
     return chopped
 
 def label(role):
-	return  = REF.lower() if role == 'ref' else TEST.lower()
+	return REF.lower() if role == 'ref' else TEST.lower()
