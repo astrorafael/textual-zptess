@@ -146,12 +146,11 @@ class DBasePhotometer:
 
     def __init__(self, role, dbase_url):
         self.log = logging.getLogger(__name__)
-        self.url = decouple.config('DATABASE_URL')
-        self.section = 'reference' if role == 'ref' else 'test'
+        self.role = role
+        self.section = 'ref-device' if role == 'ref' else 'test-device'
         self.label = REF.lower() if role == 'ref' else TEST.lower()
         log.info("%6s Using %s Info", self.label, self.__class__.__name__)
-        # Missing all sqlalchemy reading stuff
-
+        self.url = decouple.config('DATABASE_URL')
 
     # ---------------------
     # IPhotometerControl interface
@@ -168,16 +167,15 @@ class DBasePhotometer:
         '''
         Get photometer information. 
         '''
-        raise NotImplementedError()
-        # label = self.label
-        # self.log.info("==> {label:6s} [SQL] from config_t, section '{section}'", label=label, section=self.section)
-        # result = yield self.config_dao.loadSection(self.section)
-        # self.log.info("<== {label:6s} [SQL] returns {result}", label=label, result=result)
-        # result['tstamp'] = datetime.datetime.now(datetime.timezone.utc)
-        # result['zp']    = float(result['zp'])
-        # result['freq_offset'] = float(result['freq_offset'])
-        # result['old_proto'] = int(result['old_proto'])
-        # return(result)
+        log.info("Creating schema")
+        engine = create_async_engine("sqlite+aiosqlite:///zptess.db", echo=True)
+        async with engine.begin() as conn:
+            result = await conn.execute(text("SELECT property, value FROM config_t WHERE section = :section"), 
+                {"section": section}
+            )
+        for row in result:
+            self.log.info(row)   
+        await engine.dispose()
 
 
 # -------------------

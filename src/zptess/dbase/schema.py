@@ -27,6 +27,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import anyio
+import decouple
 
 #--------------
 # local imports
@@ -106,10 +107,10 @@ class Samples(Base):
 # Auxiliary functions
 # -------------------
 
-async def schema() -> None:
+async def schema(url, verbose) -> None:
     '''The main entry point specified by pyproject.toml'''
-    log.info("Creating schema")
-    engine = create_async_engine("sqlite+aiosqlite:///zptess.db", echo=True)
+    log.info("Creating/Opening schema %s", url)
+    engine = create_async_engine(url, echo=verbose)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         #await conn.run_sync(Base.metadata.create_all)
@@ -118,16 +119,15 @@ async def schema() -> None:
 def main():
 
     from zptess import __version__
-    from zptess.photometer.protocol.transport import UDPTransport, SerialTransport
-    from zptess.photometer.protocol.photinfo import HTMLInfo
     from zptess.utils.argsparse import args_parser
     from zptess.utils.logging import configure
 
     parser = args_parser(
         name = __name__,
         version = __version__,
-        description = "Example Textual App"
+        description = "Example SQLAlchemy App"
     )
     args = parser.parse_args(sys.argv[1:])
     configure(args)
-    anyio.run(schema)
+    url = decouple.config('DATABASE_URL')
+    anyio.run(schema, url, args.verbose)
