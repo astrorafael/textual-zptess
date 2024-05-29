@@ -18,8 +18,6 @@ import datetime
 import anyio
 import anyio_serial
 
-from pubsub import pub
-
 #--------------
 # local imports
 # -------------
@@ -45,6 +43,7 @@ class UDPTransport:
         self.local_port = port
 
     async def readings(self):
+        '''This is meant to be a task'''
         async with await anyio.create_udp_socket(
             family = socket.AF_INET, 
             local_host = self.local_host,
@@ -52,8 +51,7 @@ class UDPTransport:
         ) as udp:
             async for payload, (host, port) in udp:
                 now = datetime.datetime.now(datetime.timezone.utc)
-                pub.sendMessage('reading', timestamp=now, payload=payload)
-                self.log.info("%s => %s", now, payload)  
+                self.parent.handle_readings(payload, now)
 
 
 class TCPTransport:
@@ -65,14 +63,14 @@ class TCPTransport:
         self.port = port
 
     async def readings(self):
+        '''This is meant to be a task'''
         async with await anyio.connect_tcp(
             remote_host = self.host, 
             remote_port = self.port 
         ) as tcp:
             async for payload in tcp:
                 now = datetime.datetime.now(datetime.timezone.utc)
-                pub.sendMessage('reading', timestamp=now, payload=payload)
-                self.log.info("%s => %s", now, payload)  
+                self.parent.handle_readings(payload, now)
 
 
 class SerialTransport:
@@ -84,6 +82,7 @@ class SerialTransport:
         self.port = port
 
     async def readings(self):
+        '''This is meant to be a task'''
         async with anyio_serial.Serial(
             port = self.port, 
             baudrate = self.baudrate
@@ -92,5 +91,6 @@ class SerialTransport:
                 payload = await serial_port.receive_until(delimiter=b'\r\n', max_bytes = 4096)
                 now = datetime.datetime.now(datetime.timezone.utc)
                 if len(payload):
-                    pub.sendMessage('reading', timestamp=now, payload=payload)
-                    self.log.info("%s => %s", now, payload)
+                    self.parent.handle_readings(payload, now)
+
+                    

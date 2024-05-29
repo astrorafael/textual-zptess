@@ -35,7 +35,6 @@ from zptess.utils.misc import chop, label
 # Module global variables
 # -----------------------
 
-log = logging.getLogger(__name__)
 
 # ----------------
 # Module functions
@@ -75,6 +74,14 @@ class Photometer:
         else:
             self.transport = SerialTransport(self, port=name, baudrate=number)
         
+    # -----------
+    # Private API
+    # -----------
+
+    def handle_readings(self, payload, timestamp):
+        flag, message = self.decoder.decode(payload, timestamp)
+        if flag:
+            self.log.info(message)
 
     # ----------
     # Public API
@@ -89,8 +96,6 @@ class Photometer:
     async def save_zero_point(self, zero_point):
         return await self.info.save_zero_point(zero_point)
 
-    def decode(self, data):
-        return self.decoder.decode(data)
  
 __all__ = [
     "TESSProtocolFactory",
