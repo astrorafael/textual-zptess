@@ -190,16 +190,25 @@ class PhotometerService:
 # TEST
 # ====
 
-async def async_main():
-    
-    import datetime
+import datetime
 
-    from zptess import __version__
-    from zptess.utils.argsparse import args_parser
-    from zptess.utils.logging import configure
-    from zptess.photometer.protocol.tessw import Photometer
-    from anyio import create_memory_object_stream
-    from zptess.utils.misc import label
+import asyncstdlib as a
+from anyio import create_memory_object_stream
+from exceptiongroup import catch, ExceptionGroup
+
+from zptess import __version__
+from zptess.utils.misc import label
+from zptess.utils.argsparse import args_parser
+from zptess.utils.logging import configure
+from zptess.photometer.protocol.tessw import Photometer
+
+
+
+def handle_error(excgroup: ExceptionGroup) -> None:
+    for exc in excgroup.exceptions:
+        logging.error(exc)
+
+async def async_main():
 
     parser = args_parser(
         name = __name__,
@@ -221,17 +230,23 @@ async def async_main():
     logging.info(info)
 
     logging.info("Preparing to listen to photometers")
-    async with anyio.create_task_group() as tg:
-        tg.start_soon(ref_photometer.readings)
-        tg.start_soon(test_photometer.readings)
-        tg.start_soon(receptor, 'ref', receive_stream1)
-        tg.start_soon(receptor, 'test', receive_stream2)
+
+    # Catching exception groups this way is pre-Python 3.11
+    with catch({
+        ValueError: handle_error,
+        KeyError: handle_error,
+        #anyio.BrokenResourceError: handle_error,
+    }):
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(ref_photometer.readings)
+            tg.start_soon(test_photometer.readings)
+            tg.start_soon(receptor, 'ref', receive_stream1)
+            tg.start_soon(receptor, 'test', receive_stream2)
 
 async def receptor(role, stream):
-    from zptess.utils.misc import label
     log = logging.getLogger(label(role))
     async with stream:
-        async for message in stream:
+        async for message in a.islice(stream, 10):
             log.info(message)
 
 def main():

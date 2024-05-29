@@ -33,9 +33,11 @@ dependencies = [
   'aiosqlite',
   # Async I/O
   'anyio',
+  'exceptiongroups', # For Python < 3.11
+  'asyncstdlib',
   'anyio-serial',
   'httpx',
-  # text User Interface
+  # Textual TUI
   'textual-dev'
 ]
 
