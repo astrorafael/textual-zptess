@@ -28,8 +28,6 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # local imports
 # -------------
 
-from zptess.utils.misc import label
-
 # ----------------
 # Module constants
 # ----------------
@@ -37,10 +35,6 @@ from zptess.utils.misc import label
 # -----------------------
 # Module global variables
 # -----------------------
-
-# get the root logger
-log = logging.getLogger(__name__)
-
 
 def formatted_mac(mac):
     ''''Corrects TESS-W MAC strings to be properly formatted'''
@@ -66,21 +60,21 @@ class HTMLInfo:
         'flash' : re.compile(r"New Zero Point (\d{1,2}\.\d{1,2})"),   
     }
 
-    def __init__(self, role, addr):
-        self.log = logging.getLogger(__name__)
+    def __init__(self, parent, addr):
+        self.parent = parent
+        self.log = parent.log
         self.addr = addr
-        self.label = label(role)
-        log.info("%s Using %s Info", self.label, self.__class__.__name__)
+        self.log.info("%s Using %s Info", parent.label, self.__class__.__name__)
 
-    # ---------------------
-    # IPhotometerControl interface
-    # ---------------------
+    # ----------------------------
+    # Photometer Control interface
+    # ----------------------------
 
-    async def get_info(self, timeout=60):
+    async def get_info(self, timeout):
         '''
         Get photometer information. 
         '''
-        label = self.label
+        label = self.parent.label
         result = {}
         result['tstamp'] = datetime.datetime.now(datetime.timezone.utc)
         url = self._make_state_url()
@@ -120,7 +114,7 @@ class HTMLInfo:
         '''
         Writes Zero Point to the device. 
         '''
-        label = self.label
+        label = self.parent.label
         result = {}
         result['tstamp'] = datetime.datetime.now(datetime.timezone.utc)
         url = self._make_save_url()
@@ -148,25 +142,24 @@ class HTMLInfo:
 
 class DBaseInfo:
 
-    def __init__(self, role):
-        self.log = logging.getLogger(__name__)
-        self.role = role
-        self.label = label(role)
-        self.log.info("%6s Using %s Info", self.label, self.__class__.__name__)
+    def __init__(self, parent):
+        self.parent = parent
+        self.log = parent.log
+        self.log.info("%6s Using %s Info", parent.label, self.__class__.__name__)
         url = decouple.config('DATABASE_URL')
         self.engine = create_async_engine(url)
 
-    # ---------------------
-    # IPhotometerControl interface
-    # ---------------------
+    # ----------------------------
+    # Photometer Control interface
+    # ----------------------------
 
     async def save_zero_point(self, zero_point):
         '''
         Writes Zero Point to the device. 
         '''
-        if self.role == 'test':
-            raise NotImplementedError("Can't save Zero Point on a database for the %s device", self.label)
-        section = 'ref-device' if self.role == 'ref' else 'test-device'
+        if self.parent.role == 'test':
+            raise NotImplementedError("Can't save Zero Point on a database for the %s device", self.parent.label)
+        section = 'ref-device' if self.parent.role == 'ref' else 'test-device'
         prop = 'zp'
         zero_point = str(zero_point)
         async with self.engine.begin() as conn:
@@ -176,11 +169,11 @@ class DBaseInfo:
             await conn.commit()
 
 
-    async def get_info(self, timeout=None):
+    async def get_info(self, timeout):
         '''
         Get photometer information. 
         '''
-        section = 'ref-device' if self.role == 'ref' else 'test-device'
+        section = 'ref-device' if self.parent.role == 'ref' else 'test-device'
         async with self.engine.begin() as conn:
             result = await conn.execute(text("SELECT property, value FROM config_t WHERE section = :section"), 
                 {"section": section}

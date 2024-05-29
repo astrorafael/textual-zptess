@@ -32,15 +32,15 @@ from pubsub import pub
 # Module global variables
 # -----------------------
 
-log = logging.getLogger(__name__)
-
 # -------------------
 # Auxiliary functions
 # -------------------
 
 class UDPTransport:
 
-    def __init__(self, port=2255):
+    def __init__(self, parent, port=2255):
+        self.parent = parent
+        self.log = parent.log
         self.local_host = '0.0.0.0'
         self.local_port = port
 
@@ -53,12 +53,14 @@ class UDPTransport:
             async for payload, (host, port) in udp:
                 now = datetime.datetime.now(datetime.timezone.utc)
                 pub.sendMessage('reading', timestamp=now, payload=payload)
-                log.info("%s => %s", now, payload)  
+                self.log.info("%s => %s", now, payload)  
 
 
 class TCPTransport:
 
-    def __init__(self, host="192.168.4.1", port=23):
+    def __init__(self, parent, host="192.168.4.1", port=23):
+        self.parent = parent
+        self.log = parent.log
         self.host = host
         self.port = port
 
@@ -70,12 +72,14 @@ class TCPTransport:
             async for payload in tcp:
                 now = datetime.datetime.now(datetime.timezone.utc)
                 pub.sendMessage('reading', timestamp=now, payload=payload)
-                log.info("%s => %s", now, payload)  
+                self.log.info("%s => %s", now, payload)  
 
 
 class SerialTransport:
     
-    def __init__(self, port="/dev/ttyUSB0", baudrate=9600):
+    def __init__(self, parent, port="/dev/ttyUSB0", baudrate=9600):
+        self.parent = parent
+        self.log = parent.log
         self.baudrate = baudrate
         self.port = port
 
@@ -85,7 +89,8 @@ class SerialTransport:
             baudrate = self.baudrate
         ) as serial_port:
             while True:
-                payload = await serial_port.receive_until(delimiter=b'\n', max_bytes = 4096):
+                payload = await serial_port.receive_until(delimiter=b'\r\n', max_bytes = 4096)
                 now = datetime.datetime.now(datetime.timezone.utc)
-                pub.sendMessage('reading', timestamp=now, payload=payload)
-                log.info("%s => %s", now, payload)
+                if len(payload):
+                    pub.sendMessage('reading', timestamp=now, payload=payload)
+                    self.log.info("%s => %s", now, payload)

@@ -11,6 +11,7 @@
 import re
 import json
 import logging
+import datetime
 
 # -------------------
 # Third party imports
@@ -20,8 +21,6 @@ import logging
 # local imports
 # -------------
 
-from zptess.utils.misc import label
-
 # ----------------
 # Module constants
 # ----------------
@@ -30,8 +29,6 @@ from zptess.utils.misc import label
 # -----------------------
 # Module global variables
 # -----------------------
-
-log = logging.getLogger(__name__)
 
 # ----------------
 # Module functions
@@ -63,17 +60,17 @@ class OldPayload:
     )
     UNSOLICITED_PATTERNS = [ re.compile(ur['pattern']) for ur in UNSOLICITED_RESPONSES ]
 
-    def __init__(self, role):
-        self.log   = logging.getLogger(__name__)
-        self.label = label(role)
-        log.info("%6s: Using %s decoder", self.label, self.__class__.__name__)
+    def __init__(self, parent):
+        self.parent = parent
+        parent.log.info("%6s: Using %s decoder", parent.label, self.__class__.__name__)
      
-    # ----------------------------
-    # Incoming Data reception API
-    # ---------------------------
+    # ----------
+    # Public API
+    # ----------
 
-    def on_data_received(self, data, tstamp):
-        self.log.info("<== %6s [%02d] %s", self.label, len(data), data)
+    def decode(self, data: bytes, tstamp: datetime.datetime) -> (bool, dict):
+        data = data.decode()
+        self.parent.log.info("<== %6s [%02d] %s", self.parent.label, len(data), data)
         return self._handle_unsolicited_response(data, tstamp)
     
     # --------------
@@ -85,7 +82,7 @@ class OldPayload:
         for i, regexp in enumerate(self.UNSOLICITED_PATTERNS, 0):
             matchobj = regexp.search(line)
             if matchobj:
-                self.log.debug("matched %s", self.UNSOLICITED_RESPONSES[i]['name'])
+                self.parent.log.debug("matched %s", self.UNSOLICITED_RESPONSES[i]['name'])
                 return self.UNSOLICITED_RESPONSES[i], matchobj
         return None, None
 
@@ -105,10 +102,10 @@ class OldPayload:
         reading['tstamp'] = tstamp
         if ur['name'] == 'Hz reading':
             reading['freq']   = float(matchobj.group(1))/1.0
-            self.log.debug("Matched {name}", name=ur['name'])
+            self.parent.log.debug("Matched {name}", name=ur['name'])
         elif ur['name'] == 'mHz reading':
             reading['freq'] = float(matchobj.group(1))/1000.0
-            self.log.debug("Matched {name}", name=ur['name'])
+            self.parent.log.debug("Matched {name}", name=ur['name'])
         else:
             return False, None
         return True, reading
@@ -120,17 +117,18 @@ class JSONPayload:
     Decodes new JSON style TESS payload:
     """
 
-    def __init__(self, role):
-        self.label = label(role)
-        self.log = logging.getLogger(__name__)
-        log.info("%6s: Using %s decoder", self.label, self.__class__.__name__)
+    def __init__(self, parent):
+        self.parent = parent
+        self.log = parent.log
+        self.log.info("%6s: Using %s decoder", parent.label, self.__class__.__name__)
 
-    # ----------------------------
-    # Incoming Data reception API
-    # ---------------------------
+    # ----------
+    # Public API
+    # ----------
 
-    def on_data_received(self, data, tstamp):
-        self.log.info("<== %6s [%02d] %s", self.label, len(data), data)
+    def decode(self, data: bytes, tstamp: datetime.datetime) -> (bool, dict):
+        data = data.decode()
+        self.log.info("<== %6s [%02d] %s", self.parent.label, len(data), data)
         try:
             reading = json.loads(data)
         except Exception as e:

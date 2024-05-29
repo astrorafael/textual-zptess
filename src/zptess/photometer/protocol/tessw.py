@@ -24,7 +24,7 @@ import decouple
 from zptess.photometer.protocol.transport import UDPTransport, TCPTransport, SerialTransport
 from zptess.photometer.protocol.payload   import JSONPayload, OldPayload
 from zptess.photometer.protocol.photinfo  import HTMLInfo, DBaseInfo
-from zptess.utils.misc import chop
+from zptess.utils.misc import chop, label
 
 # ----------------
 # Module constants
@@ -54,26 +54,43 @@ log = logging.getLogger(__name__)
 
 
 
-class TESSProtocolFactory:
+class Photometer:
 
-    def build(self, role, old_payload):
+    def __init__(self, role, old_payload):
+        self.role = role
+        self.label = label(role)
+        self.log = logging.getLogger(self.label)
+        self.decoder = OldPayload(self) if old_payload else JSONPayload(self)
         device_url = decouple.config('REF_ENDPOINT') if role == 'ref' else  decouple.config('TEST_ENDPOINT')
-        log.info(device_url)
         transport, name, number = chop(device_url,sep=':')
         number = int(number) if number else 80
         if transport == 'serial' and role == 'ref':
-            photinfo_obj = DBaseInfo(role)
+            self.info = DBaseInfo(self)
         else:
-            photinfo_obj = HTMLInfo(role, addr=name)
+            self.info = HTMLInfo(self, addr=name)
         if transport == 'udp':
-            transport_obj = UDPTransport(port=number)
+            self.transport = UDPTransport(self, port=number)
         elif transport == 'tcp':
-            transport_obj = TCPTransport(host=name, port=number)
+            self.transport = TCPTransport(self, host=name, port=number)
         else:
-            transport_obj = SerialTransport(port=name, baudrate=number)
-        payload_obj = OldPayload(role) if old_payload else JSONPayload(role)
-        return transport_obj, photinfo_obj, payload_obj
-       
+            self.transport = SerialTransport(self, port=name, baudrate=number)
+        
+
+    # ----------
+    # Public API
+    # ----------
+
+    async def readings(self):
+        return await self.transport.readings()
+
+    async def get_info(self, timeout=5):
+        return await self.info.get_info(timeout)
+
+    async def save_zero_point(self, zero_point):
+        return await self.info.save_zero_point(zero_point)
+
+    def decode(self, data):
+        return self.decoder.decode(data)
  
 __all__ = [
     "TESSProtocolFactory",

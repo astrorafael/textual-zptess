@@ -195,7 +195,7 @@ async def async_main():
     from zptess import __version__
     from zptess.utils.argsparse import args_parser
     from zptess.utils.logging import configure
-    from zptess.photometer.protocol.tessw import TESSProtocolFactory
+    from zptess.photometer.protocol.tessw import Photometer
 
     parser = args_parser(
         name = __name__,
@@ -205,20 +205,19 @@ async def async_main():
     args = parser.parse_args(sys.argv[1:])
     configure(args)
 
-    factory = TESSProtocolFactory()
-    transport_obj1, photinfo_obj1, payload_obj1 = factory.build(role='ref', old_payload=True)
-    transport_obj2, photinfo_obj2, payload_obj2 = factory.build(role='test',old_payload=False)
-
+    ref_photometer = Photometer(role='ref', old_payload=True)
+    test_photometer =  Photometer(role='test', old_payload=False)
+   
     logging.info("Obtaining Photometers info")
-    info = await photinfo_obj1.get_info()
+    info = await ref_photometer.get_info()
     logging.info(info)
-    info = await photinfo_obj2.get_info()
+    info = await test_photometer.get_info()
     logging.info(info)
 
     logging.info("Preparing to listen to photometers")
     async with anyio.create_task_group() as tg:
-        tg.start_soon(transport_obj1.readings)
-        tg.start_soon(transport_obj2.readings)
+        tg.start_soon(ref_photometer.readings)
+        tg.start_soon(test_photometer.readings)
 
 
 def main():
