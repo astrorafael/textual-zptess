@@ -116,11 +116,11 @@ class OldPayload:
     def _deduplicate(self, message):
         if self._prev_msg is None:
             self._prev_msg = message
-            return  None
+            return  False, None
         if message['tbox'] == self._prev_msg['tbox'] and message['freq'] == self._prev_msg['tbox']:
-            result = None
+            result = (False, None)
         else:
-            result = self._prev_msg
+            result = (True, self._prev_msg)
         self._prev_msg = message    
         return result
 
@@ -142,8 +142,8 @@ class JSONPayload:
     def _deduplicate(self, message):
         if self._prev_msg is None:
             self._prev_msg = message
-            return  None
-        result = self._prev_msg if self._prev_msg['udp'] != message['udp'] else None
+            return  False, None
+        result = (True, self._prev_msg) if self._prev_msg['udp'] != message['udp'] else (False, None)
         self._prev_msg = message    
         return result
 
@@ -161,8 +161,8 @@ class JSONPayload:
         else:
             if type(message) == dict:
                 message['tstamp'] = tstamp
-                prev_message = self._deduplicate(message)
-                return True, prev_message
+                flag, prev_message = self._deduplicate(message)
+                return flag, prev_message
             else:
                 return False, None
 
