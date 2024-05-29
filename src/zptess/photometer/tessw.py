@@ -16,6 +16,7 @@ import datetime
 # -------------------
 
 import decouple
+import anyio
 
 #--------------
 # local imports
@@ -82,7 +83,10 @@ class Photometer:
     async def handle_readings(self, payload, timestamp):
         flag, message = self.decoder.decode(payload, timestamp)
         if flag:
-            await self.stream.send(message)
+            try:
+                await self.stream.send(message)
+            except anyio.BrokenResourceError:
+                self.log.error("receiver lost, discarded message")
 
 
     # ----------

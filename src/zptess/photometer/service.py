@@ -18,6 +18,7 @@ import logging
 # -------------------
 
 from pubsub import pub
+import asyncio
 import anyio
 
 #--------------
@@ -201,7 +202,7 @@ from zptess import __version__
 from zptess.utils.misc import label
 from zptess.utils.argsparse import args_parser
 from zptess.utils.logging import configure
-from zptess.photometer.protocol.tessw import Photometer
+from zptess.photometer.tessw import Photometer
 
 
 
@@ -244,11 +245,17 @@ async def async_main():
             tg.start_soon(receptor, 'ref', receive_stream1)
             tg.start_soon(receptor, 'test', receive_stream2)
 
+
 async def receptor(role, stream):
     log = logging.getLogger(label(role))
     async with stream:
-        async for message in a.islice(stream, 10):
-            log.info(message)
+        async for i, message in a.enumerate(stream, start=1):
+            log.info("{%02d} %s", i, message)
+            if i > 10:
+                break
 
 def main():
-    anyio.run(async_main)
+    try:
+        anyio.run(async_main)
+    except asyncio.exceptions.CancelledError:
+        logging.error("Cancelled at user's request")
