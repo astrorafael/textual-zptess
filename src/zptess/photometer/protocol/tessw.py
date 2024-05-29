@@ -82,7 +82,7 @@ class Photometer:
     async def handle_readings(self, payload, timestamp):
         flag, message = self.decoder.decode(payload, timestamp)
         if flag:
-            await self.stream.send((payload,timestamp))
+            await self.stream.send(message)
 
 
     # ----------

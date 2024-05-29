@@ -192,12 +192,14 @@ class PhotometerService:
 
 async def async_main():
     
+    import datetime
+
     from zptess import __version__
     from zptess.utils.argsparse import args_parser
     from zptess.utils.logging import configure
     from zptess.photometer.protocol.tessw import Photometer
     from anyio import create_memory_object_stream
-    import datetime
+    from zptess.utils.misc import label
 
     parser = args_parser(
         name = __name__,
@@ -207,9 +209,9 @@ async def async_main():
     args = parser.parse_args(sys.argv[1:])
     configure(args)
     
-    send_stream1, receive_stream = create_memory_object_stream[(dict,datetime.datetime)](max_buffer_size=4)
+    send_stream1, receive_stream1 = create_memory_object_stream[dict](max_buffer_size=4)
     ref_photometer = Photometer(role='ref', old_payload=True, stream=send_stream1)
-    send_stream2 = send_stream1.clone()
+    send_stream2, receive_stream2 = create_memory_object_stream[dict](max_buffer_size=4)
     test_photometer =  Photometer(role='test', old_payload=False, stream=send_stream2)
    
     logging.info("Obtaining Photometers info")
@@ -222,7 +224,15 @@ async def async_main():
     async with anyio.create_task_group() as tg:
         tg.start_soon(ref_photometer.readings)
         tg.start_soon(test_photometer.readings)
+        tg.start_soon(receptor, 'ref', receive_stream1)
+        tg.start_soon(receptor, 'test', receive_stream2)
 
+async def receptor(role, stream):
+    from zptess.utils.misc import label
+    log = logging.getLogger(label(role))
+    async with stream:
+        async for message in stream:
+            log.info(message)
 
 def main():
     anyio.run(async_main)
