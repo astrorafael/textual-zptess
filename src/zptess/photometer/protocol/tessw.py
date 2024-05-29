@@ -81,7 +81,7 @@ class Photometer:
     def handle_readings(self, payload, timestamp):
         flag, message = self.decoder.decode(payload, timestamp)
         if flag:
-            self.log.info(message)
+            pass
 
     # ----------
     # Public API

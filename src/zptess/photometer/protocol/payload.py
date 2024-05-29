@@ -118,6 +118,7 @@ class OldPayload:
             self._prev_msg = message
             return  False, None
         if message['tbox'] == self._prev_msg['tbox'] and message['freq'] == self._prev_msg['tbox']:
+            log.warn("Duplicate payload: %s", message)
             result = (False, None)
         else:
             result = (True, self._prev_msg)
@@ -144,6 +145,8 @@ class JSONPayload:
             self._prev_msg = message
             return  False, None
         result = (True, self._prev_msg) if self._prev_msg['udp'] != message['udp'] else (False, None)
+        if not result[0]:
+            log.warn("Duplicate payload: %s", message)
         self._prev_msg = message    
         return result
 
