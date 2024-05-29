@@ -55,11 +55,12 @@ from zptess.utils.misc import chop, label
 
 class Photometer:
 
-    def __init__(self, role, old_payload):
+    def __init__(self, role, old_payload, stream):
         self.role = role
         self.label = label(role)
         self.log = logging.getLogger(self.label)
         self.decoder = OldPayload(self) if old_payload else JSONPayload(self)
+        self.stream = stream
         device_url = decouple.config('REF_ENDPOINT') if role == 'ref' else  decouple.config('TEST_ENDPOINT')
         transport, name, number = chop(device_url,sep=':')
         number = int(number) if number else 80
@@ -78,17 +79,19 @@ class Photometer:
     # Private API
     # -----------
 
-    def handle_readings(self, payload, timestamp):
+    async def handle_readings(self, payload, timestamp):
         flag, message = self.decoder.decode(payload, timestamp)
         if flag:
-            pass
+            await self.stream.send((payload,timestamp))
+
 
     # ----------
     # Public API
     # ----------
 
     async def readings(self):
-        return await self.transport.readings()
+        async with self.stream:
+            return await self.transport.readings()
 
     async def get_info(self, timeout=5):
         return await self.info.get_info(timeout)

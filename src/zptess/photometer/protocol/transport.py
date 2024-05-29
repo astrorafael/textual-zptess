@@ -51,7 +51,7 @@ class UDPTransport:
         ) as udp:
             async for payload, (host, port) in udp:
                 now = datetime.datetime.now(datetime.timezone.utc)
-                self.parent.handle_readings(payload, now)
+                await self.parent.handle_readings(payload, now)
 
 
 class TCPTransport:
@@ -70,7 +70,7 @@ class TCPTransport:
         ) as tcp:
             async for payload in tcp:
                 now = datetime.datetime.now(datetime.timezone.utc)
-                self.parent.handle_readings(payload, now)
+                await self.parent.handle_readings(payload, now)
 
 
 class SerialTransport:
@@ -91,6 +91,6 @@ class SerialTransport:
                 payload = await serial_port.receive_until(delimiter=b'\r\n', max_bytes = 4096)
                 now = datetime.datetime.now(datetime.timezone.utc)
                 if len(payload):
-                    self.parent.handle_readings(payload, now)
+                    await self.parent.handle_readings(payload, now)
 
                     

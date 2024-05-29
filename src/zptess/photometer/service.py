@@ -196,6 +196,8 @@ async def async_main():
     from zptess.utils.argsparse import args_parser
     from zptess.utils.logging import configure
     from zptess.photometer.protocol.tessw import Photometer
+    from anyio import create_memory_object_stream
+    import datetime
 
     parser = args_parser(
         name = __name__,
@@ -204,9 +206,11 @@ async def async_main():
     )
     args = parser.parse_args(sys.argv[1:])
     configure(args)
-
-    ref_photometer = Photometer(role='ref', old_payload=True)
-    test_photometer =  Photometer(role='test', old_payload=False)
+    
+    send_stream1, receive_stream = create_memory_object_stream[(dict,datetime.datetime)](max_buffer_size=4)
+    ref_photometer = Photometer(role='ref', old_payload=True, stream=send_stream1)
+    send_stream2 = send_stream1.clone()
+    test_photometer =  Photometer(role='test', old_payload=False, stream=send_stream2)
    
     logging.info("Obtaining Photometers info")
     info = await ref_photometer.get_info()
