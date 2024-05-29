@@ -193,7 +193,8 @@ class PhotometerService:
 import datetime
 
 import asyncstdlib as a
-from anyio import create_memory_object_stream
+import anyio
+
 from exceptiongroup import catch, ExceptionGroup
 
 from zptess import __version__
@@ -218,9 +219,9 @@ async def async_main():
     args = parser.parse_args(sys.argv[1:])
     configure(args)
     
-    send_stream1, receive_stream1 = create_memory_object_stream[dict](max_buffer_size=4)
+    send_stream1, receive_stream1 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
     ref_photometer = Photometer(role='ref', old_payload=True, stream=send_stream1)
-    send_stream2, receive_stream2 = create_memory_object_stream[dict](max_buffer_size=4)
+    send_stream2, receive_stream2 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
     test_photometer =  Photometer(role='test', old_payload=False, stream=send_stream2)
    
     logging.info("Obtaining Photometers info")
