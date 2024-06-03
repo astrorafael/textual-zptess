@@ -50,13 +50,8 @@ def handle_error(excgroup: ExceptionGroup) -> None:
         logging.error(exc)
 
 
-async def receptor(role, stream):
-    log = logging.getLogger(label(role))
-    async with stream:
-        async for i, message in a.enumerate(stream, start=1):
-            log.info("{%02d} %s", i, message)
-            if i > 10:
-                break
+
+           
 
 class Controller:
 
@@ -68,10 +63,15 @@ class Controller:
 
         self.send_stream2, self.receive_stream2 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
         self.test_photometer =  Photometer(role='test', old_payload=False, stream=self.send_stream2)
-        
+
+    async def receptor(self, role, stream):
+        log = logging.getLogger(label(role))
+        widget = self.tui.get_log_widget(role)
+        async with stream:
+            async for i, message in a.enumerate(stream, start=1):
+                widget.write_line(str(message))
 
     async def run_async(self):
-
         logging.info("Obtaining Photometers info")
         try:
             info = await self.ref_photometer.get_info()
@@ -93,5 +93,5 @@ class Controller:
             async with anyio.create_task_group() as tg:
                 tg.start_soon(self.ref_photometer.readings)
                 tg.start_soon(self.test_photometer.readings)
-                tg.start_soon(receptor, 'ref', self.receive_stream1)
-                tg.start_soon(receptor, 'test', self.receive_stream2)
+                tg.start_soon(self.receptor, 'ref', self.receive_stream1)
+                tg.start_soon(self.receptor, 'test', self.receive_stream2)

@@ -100,7 +100,9 @@ class ZpTessApp(App[str]):
         self.query_one("#ref_log").border_title = "REFERENCE LOG"
         self.query_one("#test_log").border_title = "TEST LOG"
      
-      
+    def get_log_widget(self, role):
+        return self.query_one("#ref_log") if role == 'ref' else self.query_one("#test_log")
+    
     def action_quit(self):
         self.exit(return_code=2)
 
