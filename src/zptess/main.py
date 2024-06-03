@@ -27,6 +27,8 @@ from zptess import __version__
 from zptess.utils.argsparse import args_parser
 from zptess.utils.logging import configure
 from zptess.tui.main import ZpTessApp
+from zptess.controller import Controller
+
 # ----------------
 # Module constants
 # ----------------
@@ -43,10 +45,12 @@ log = logging.getLogger()
 # -------------------
 
 async def bootstrap():
-    app = ZpTessApp()
     async with anyio.create_task_group() as tg:
         log.info("Creating the TUI task")
+        app = ZpTessApp()
         tg.start_soon(app.run_async)
+        controller = Controller(app)
+        tg.start_soon(controller.run_async)
 
 
 def main():
