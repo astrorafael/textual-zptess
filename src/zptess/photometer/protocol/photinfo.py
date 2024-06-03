@@ -146,7 +146,7 @@ class DBaseInfo:
         self.parent = parent
         self.log = parent.log
         self.log.info("%6s Using %s Info", parent.label, self.__class__.__name__)
-        url = decouple.config('DATABASE_URL')
+        url = decouple.config('DATABASE_ASYNC_URL')
         self.engine = create_async_engine(url)
 
     # ----------------------------

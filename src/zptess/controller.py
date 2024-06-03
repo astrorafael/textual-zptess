@@ -17,13 +17,16 @@ import logging
 # Third party imports
 # -------------------
 
+import asyncstdlib as a
 import anyio
+from exceptiongroup import catch, ExceptionGroup
 
 #--------------
 # local imports
 # -------------
 
 from zptess import TEST
+from zptess.utils.misc import label
 from zptess.photometer.tessw import Photometer
 
 # ----------------
@@ -41,6 +44,20 @@ log = logging.getLogger()
 # Auxiliary functions
 # -------------------
 
+
+def handle_error(excgroup: ExceptionGroup) -> None:
+    for exc in excgroup.exceptions:
+        logging.error(exc)
+
+
+async def receptor(role, stream):
+    log = logging.getLogger(label(role))
+    async with stream:
+        async for i, message in a.enumerate(stream, start=1):
+            log.info("{%02d} %s", i, message)
+            if i > 10:
+                break
+
 class Controller:
 
     def __init__(self, tui):
@@ -51,18 +68,21 @@ class Controller:
 
         self.send_stream2, self.receive_stream2 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
         self.test_photometer =  Photometer(role='test', old_payload=False, stream=self.send_stream2)
-       
         
 
     async def run_async(self):
 
         logging.info("Obtaining Photometers info")
-        info = await self.ref_photometer.get_info()
-        logging.info(info)
-        info = await self.test_photometer.get_info()
-        logging.info(info)
+        try:
+            info = await self.ref_photometer.get_info()
+            logging.info(info)
+            info = await self.test_photometer.get_info()
+            logging.info(info)
+        except Exception as e:
+            log.error(e)
 
-        logging.info("Preparing to listen to photometers") 
+        logging.info("Preparing to listen to photometers")
+
 
         # Catching exception groups this way is pre-Python 3.11
         with catch({
@@ -71,7 +91,7 @@ class Controller:
             #anyio.BrokenResourceError: handle_error,
         }):
             async with anyio.create_task_group() as tg:
-                tg.start_soon(ref_photometer.readings)
-                tg.start_soon(test_photometer.readings)
-                tg.start_soon(receptor, 'ref', receive_stream1)
-                tg.start_soon(receptor, 'test', receive_stream2)
+                tg.start_soon(self.ref_photometer.readings)
+                tg.start_soon(self.test_photometer.readings)
+                tg.start_soon(receptor, 'ref', self.receive_stream1)
+                tg.start_soon(receptor, 'test', self.receive_stream2)
