@@ -20,7 +20,7 @@ import logging
 from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static
-from textual.containers import ScrollableContainer
+from textual.containers import ScrollableContainer, Horizontal
 
 #--------------
 # local imports
@@ -47,13 +47,20 @@ log = logging.getLogger()
 
 ROWS = [
     ("Property", "Value"),
-    ("Name", "stars1"),
+    ("Name", "stars2"),
     ("Role", "TEST"),
     ("MAC address", "AA:BB:CC:DD:EE:FF"),
     ("Zero Point",  20.50),
     ("Freq. Offset", 0.0),
 ]
 
+METADATA = {
+    "Name": "stars2",
+    "Role": "TEST",
+    "MAC address": "AA:BB:CC:DD:EE:FF",
+    "Zero Point":  20.50,
+    "Freq. Offset": 0.0,
+}
 
 class ZpTessApp(App[str]):
 
@@ -72,19 +79,27 @@ class ZpTessApp(App[str]):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()
-        yield DataTable()
-        yield Log(id="reflog", classes="box")
-        yield Log(id="testlog", classes="box")
+        with Horizontal(id="metadata_container"):
+            yield DataTable(id="ref_metadata")
+            yield DataTable(id="test_metadata")
+        yield Log(id="ref_log", classes="box")
+        yield Log(id="test_log", classes="box")
         #with ScrollableContainer(id="contenido"):
             #pass
 
     def on_mount(self) -> None:
-        table = self.query_one(DataTable)
-        table.add_columns(*ROWS[0])
-        table.add_rows(ROWS[1:])
-        table.fixed_rows = 5
-        table.fixed_columns = 2
-        table.show_cursor = False
+        # Apparently containers do not have a border_title to show
+        self.query_one("#metadata_container").border_title = "METADATA"
+        for ident in ("#ref_metadata", "#test_metadata"):
+            table = self.query_one(ident)
+            table.add_columns(*("Property", "Value"))
+            table.add_rows(METADATA.items())
+            table.fixed_columns = 2
+            table.show_cursor = False
+
+        self.query_one("#ref_log").border_title = "REFERENCE LOG"
+        self.query_one("#test_log").border_title = "TEST LOG"
+     
       
     def action_quit(self):
         self.exit(return_code=2)
@@ -92,8 +107,6 @@ class ZpTessApp(App[str]):
     @on(Button.Pressed, '#yes')
     def yes_pressed(self) -> None:
         self.exit(return_code=3)
-        foo
-        textual.sleep(3000)
 
 
 def main():

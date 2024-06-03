@@ -4,6 +4,7 @@ Footer {
 
 #reflog {
 	background: darkblue;
+
 }
 
 #testlog {

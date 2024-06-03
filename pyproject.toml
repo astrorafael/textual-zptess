@@ -51,7 +51,8 @@ Homepage = "https://github.com/astrorafael/textual-zptess"
 Repository = "https://github.com/astrorafael/textual-zptess.git"
 
 [project.scripts]
-zptess = "zptess.tui.main:main"
+tui = "zptess.tui.main:main"
+zptess = "zptess.main:main"
 schema = "zptess.dbase.schema:main"
 phot = "zptess.photometer.service:main"
 
