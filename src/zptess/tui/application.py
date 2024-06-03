@@ -20,15 +20,11 @@ import logging
 from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static
-from textual.containers import ScrollableContainer, Horizontal
+from textual.containers import Horizontal
 
 #--------------
 # local imports
 # -------------
-
-from zptess import __version__
-from zptess.utils.argsparse import args_parser
-from zptess.utils.logging import configure
 
 # ----------------
 # Module constants
@@ -93,15 +89,18 @@ class ZpTessApp(App[str]):
         for ident in ("#ref_metadata", "#test_metadata"):
             table = self.query_one(ident)
             table.add_columns(*("Property", "Value"))
-            table.add_rows(METADATA.items())
             table.fixed_columns = 2
             table.show_cursor = False
-
         self.query_one("#ref_log").border_title = "REFERENCE LOG"
         self.query_one("#test_log").border_title = "TEST LOG"
      
     def get_log_widget(self, role):
         return self.query_one("#ref_log") if role == 'ref' else self.query_one("#test_log")
+
+    def update_metadata(self, role, metadata):
+        ident = "#ref_metadata" if role == 'ref' else "#test_metadata"
+        table = self.query_one(ident)
+        table.add_rows(metadata.items())
     
     def action_quit(self):
         self.exit(return_code=2)
@@ -109,18 +108,3 @@ class ZpTessApp(App[str]):
     @on(Button.Pressed, '#yes')
     def yes_pressed(self) -> None:
         self.exit(return_code=3)
-
-
-def main():
-    '''The main entry point specified by pyproject.toml'''
-    parser = args_parser(
-        name = __name__,
-        version = __version__,
-        description = "Example Textual App"
-    )
-   
-    args = parser.parse_args(sys.argv[1:])
-    configure(args)
-    app = ZpTessApp()
-    app.run()
-    sys.exit(app.return_code or 0)

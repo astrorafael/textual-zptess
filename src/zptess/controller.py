@@ -20,6 +20,7 @@ import logging
 import asyncstdlib as a
 import anyio
 from exceptiongroup import catch, ExceptionGroup
+from textual import work
 
 #--------------
 # local imports
@@ -71,18 +72,20 @@ class Controller:
             async for i, message in a.enumerate(stream, start=1):
                 widget.write_line(str(message))
 
-    async def run_async(self):
-        logging.info("Obtaining Photometers info")
+    async def get_info(self):
         try:
             info = await self.ref_photometer.get_info()
-            logging.info(info)
+            self.tui.update_metadata('ref', info)
             info = await self.test_photometer.get_info()
-            logging.info(info)
+            log.info(info)
+            self.tui.update_metadata('test', info)
         except Exception as e:
             log.error(e)
 
-        logging.info("Preparing to listen to photometers")
 
+    async def run_async(self):
+
+        await self.get_info()
 
         # Catching exception groups this way is pre-Python 3.11
         with catch({

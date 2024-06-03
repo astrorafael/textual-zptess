@@ -26,7 +26,7 @@ import anyio
 from zptess import __version__
 from zptess.utils.argsparse import args_parser
 from zptess.utils.logging import configure
-from zptess.tui.main import ZpTessApp
+from zptess.tui.application import ZpTessApp
 from zptess.controller import Controller
 
 # ----------------
