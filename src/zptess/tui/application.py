@@ -103,6 +103,7 @@ class ZpTessApp(App[str]):
         table.add_rows(metadata.items())
     
     def action_quit(self):
+        self.quit_event.set()
         self.exit(return_code=2)
 
     @on(Button.Pressed, '#yes')

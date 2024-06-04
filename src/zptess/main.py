@@ -18,6 +18,7 @@ import logging
 # -------------------
 
 import anyio
+from exceptiongroup import catch, ExceptionGroup
 
 #--------------
 # local imports
@@ -44,13 +45,23 @@ log = logging.getLogger()
 # Auxiliary functions
 # -------------------
 
+def handle_error(excgroup: ExceptionGroup) -> None:
+    for exc in excgroup.exceptions:
+        log.error(exc)
+
 async def bootstrap():
-    async with anyio.create_task_group() as tg:
-        log.info("Creating the TUI task")
-        app = ZpTessApp()
-        tg.start_soon(app.run_async)
-        controller = Controller(app)
-        tg.start_soon(controller.run_async)
+     with catch({
+        ValueError: handle_error,
+        KeyError: handle_error,
+        KeyboardInterrupt: handle_error
+        #anyio.BrokenResourceError: handle_error,
+    }):
+        async with anyio.create_task_group() as tg:
+            log.info("Creating the TUI task")
+            app = ZpTessApp()
+            tg.start_soon(app.run_async)
+            controller = Controller(app)
+            tg.start_soon(controller.run_async)
 
 
 def main():

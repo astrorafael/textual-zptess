@@ -73,11 +73,12 @@ class Controller:
                     widget.write_line(str(message))
 
     async def run_async(self):
-
+        self.tui.quit_event = anyio.Event()
         # Catching exception groups this way is pre-Python 3.11
         with catch({
             ValueError: handle_error,
             KeyError: handle_error,
+            KeyboardInterrupt: handle_error,
             #anyio.BrokenResourceError: handle_error,
         }):
             async with anyio.create_task_group() as tg:
@@ -85,3 +86,5 @@ class Controller:
                 tg.start_soon(self.ref_photometer.readings)
                 tg.start_soon(self.receptor, 'test', self.receive_stream2)
                 tg.start_soon(self.receptor, 'ref', self.receive_stream1)
+                await self.tui.quit_event.wait()
+                raise  KeyboardInterrupt("User quits")

@@ -57,7 +57,8 @@ class HTMLInfo:
         'freq_offset': re.compile(r"Offset mHz: (\d{1,2}\.\d{1,2})"),
         'firmware' : re.compile(r"Compiled: (.+?)<br>"),  # Non-greedy matching until <br>
         # This applies to the /setconst?cons=nn.nn page
-        'flash' : re.compile(r"New Zero Point (\d{1,2}\.\d{1,2})"),   
+        'flash' : re.compile(r"New Zero Point (\d{1,2}\.\d{1,2})"),
+        'model' : re.compile(r"([a-zA-Z0-9_\-]+)\s+Settings")
     }
 
     def __init__(self, parent, addr):
@@ -107,6 +108,12 @@ class HTMLInfo:
             result['freq_offset'] = 0.0
         else:
             result['freq_offset'] = float(matchobj.groups(1)[0])/1000.0
+        matchobj = self.GET_INFO['model'].search(text)
+        if not matchobj:
+            self.log.warn("%6s Model not found, defaults to TESS-W", label)
+            result['model'] = "TESS-WAY"
+        else:
+            result['model'] = matchobj.groups(1)[0]
         return result
 
 
