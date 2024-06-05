@@ -29,7 +29,7 @@ from zptess import __version__
 from zptess.utils.argsparse import args_parser
 from zptess.utils.logging import configure
 from zptess.tui.application import ZpTessApp
-from zptess.controller import Controller
+from zptess.tui.controller import Controller
 
 # ----------------
 # Module constants
