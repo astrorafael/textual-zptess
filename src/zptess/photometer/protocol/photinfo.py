@@ -50,6 +50,7 @@ class HTMLInfo:
 
     GET_INFO = {
         # These apply to the /config page
+        'model' : re.compile(r"([-0-9A-Z]+)\s+Settings\."),
         'name'  : re.compile(r"(stars\d+)"),       
         'mac'   : re.compile(r"MAC: ([0-9A-Fa-f]{1,2}:[0-9A-Fa-f]{1,2}:[0-9A-Fa-f]{1,2}:[0-9A-Fa-f]{1,2}:[0-9A-Fa-f]{1,2}:[0-9A-Fa-f]{1,2})"),       
         'zp'    : re.compile(r"(ZP|CI): (\d{1,2}\.\d{1,2})"),
@@ -58,7 +59,6 @@ class HTMLInfo:
         'firmware' : re.compile(r"Compiled: (.+?)<br>"),  # Non-greedy matching until <br>
         # This applies to the /setconst?cons=nn.nn page
         'flash' : re.compile(r"New Zero Point (\d{1,2}\.\d{1,2})"),
-        'model' : re.compile(r"([a-zA-Z0-9_\-]+)\s+Settings")
     }
 
     def __init__(self, parent, addr):
