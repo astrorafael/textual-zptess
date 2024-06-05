@@ -58,11 +58,12 @@ async def bootstrap():
         #anyio.BrokenResourceError: handle_error,
     }):
         async with anyio.create_task_group() as tg:
-            log.info("Creating the TUI task")
-            app = ZpTessApp()
-            tg.start_soon(app.run_async)
-            controller = Controller(app)
+            controller = Controller()
+            tui = ZpTessApp(controller)
+            controller.set_view(tui)
             tg.start_soon(controller.run_async)
+            tg.start_soon(tui.run_async)
+           
 
 
 def main():

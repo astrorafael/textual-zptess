@@ -72,6 +72,10 @@ class ZpTessApp(App[str]):
         os.path.join("css", "zptess.tcss"),
     ]
 
+    def __init__(self, controller):
+        super().__init__()
+        self.controller = controller
+
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()

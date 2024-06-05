@@ -52,29 +52,31 @@ def handle_error(excgroup: ExceptionGroup) -> None:
 
 class Controller:
 
-    def __init__(self, tui):
-        self.tui = tui
+    def __init__(self):
         self.send_stream1, self.receive_stream1 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
         self.ref_photometer = Photometer(role='ref', old_payload=True, stream=self.send_stream1)
         self.send_stream2, self.receive_stream2 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
         self.test_photometer =  Photometer(role='test', old_payload=False, stream=self.send_stream2)
 
+    def set_view(self, view):
+        self.view = view
+
     async def receptor(self, role, stream):
         photometer = self.ref_photometer if role == 'ref' else  self.test_photometer
         try:
             info = await photometer.get_info()
-            self.tui.update_metadata(role, info)
+            self.view.update_metadata(role, info)
         except Exception as e:
             log.error(e)
         else:
-            widget = self.tui.get_log_widget(role)
+            widget = self.view.get_log_widget(role)
             async with stream:
                 async for i, msg in a.enumerate(stream, start=1):
                     message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']}"
                     widget.write_line(message)
 
     async def run_async(self):
-        self.tui.quit_event = anyio.Event()
+        self.view.quit_event = anyio.Event()
         # Catching exception groups this way is pre-Python 3.11
         with catch({
             ValueError: handle_error,
@@ -87,5 +89,5 @@ class Controller:
                 tg.start_soon(self.ref_photometer.readings)
                 tg.start_soon(self.receptor, 'test', self.receive_stream2)
                 tg.start_soon(self.receptor, 'ref', self.receive_stream1)
-                await self.tui.quit_event.wait()
+                await self.view.quit_event.wait()
                 raise  KeyboardInterrupt("User quits")
