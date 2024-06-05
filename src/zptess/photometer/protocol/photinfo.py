@@ -17,7 +17,6 @@ import logging
 # Third Party imports
 # -------------------
 
-import anyio
 import httpx
 import decouple
 
