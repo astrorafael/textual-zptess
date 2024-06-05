@@ -69,8 +69,9 @@ class Controller:
         else:
             widget = self.tui.get_log_widget(role)
             async with stream:
-                async for i, message in a.enumerate(stream, start=1):
-                    widget.write_line(str(message))
+                async for i, msg in a.enumerate(stream, start=1):
+                    message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']}"
+                    widget.write_line(message)
 
     async def run_async(self):
         self.tui.quit_event = anyio.Event()

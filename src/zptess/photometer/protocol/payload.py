@@ -97,7 +97,7 @@ class OldPayload:
         if not ur:
             return False, None
         message = {}
-        message['tbox']   = float(matchobj.group(2))/100.0
+        message['tamb']   = float(matchobj.group(2))/100.0
         message['tsky']   = float(matchobj.group(3))/100.0
         message['zp']     = float(matchobj.group(4))/100.0
         message['tstamp'] = tstamp
@@ -117,7 +117,7 @@ class OldPayload:
         if self._prev_msg is None:
             self._prev_msg = message
             return  False, None
-        if message['tbox'] == self._prev_msg['tbox'] and message['freq'] == self._prev_msg['tbox']:
+        if message['tamb'] == self._prev_msg['tamb'] and message['freq'] == self._prev_msg['tamb']:
             log.warn("Duplicate payload: %s", message)
             result = (False, None)
         else:
