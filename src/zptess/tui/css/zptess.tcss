@@ -2,15 +2,21 @@ Footer {
 	height: 1;
 }
 
-#reflog {
+#ref_log {
 	background: darkblue;
 
 }
 
-#testlog {
+#tst_log {
 	background: black;
 }
 
 .box {
     border: solid green;
+}
+
+Switch {
+    height: auto;
+    width: auto;
+    align: right bottom;
 }

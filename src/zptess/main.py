@@ -51,20 +51,19 @@ def handle_error(excgroup: ExceptionGroup) -> None:
         log.error(exc)
 
 async def bootstrap():
-     with catch({
+    with catch({
         ValueError: handle_error,
         KeyError: handle_error,
         KeyboardInterrupt: handle_error
         #anyio.BrokenResourceError: handle_error,
     }):
+        controller = Controller()
+        tui = ZpTessApp(controller)
+        controller.set_view(tui)
         async with anyio.create_task_group() as tg:
-            controller = Controller()
-            tui = ZpTessApp(controller)
-            controller.set_view(tui)
-            tg.start_soon(controller.run_async)
             tg.start_soon(tui.run_async)
+            tg.start_soon(controller.wait)
            
-
 
 def main():
     '''The main entry point specified by pyproject.toml'''

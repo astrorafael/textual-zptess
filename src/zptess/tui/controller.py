@@ -57,9 +57,15 @@ class Controller:
         self.ref_photometer = Photometer(role='ref', old_payload=True, stream=self.send_stream1)
         self.send_stream2, self.receive_stream2 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
         self.test_photometer =  Photometer(role='test', old_payload=False, stream=self.send_stream2)
+        self.quit_event =  None
 
     def set_view(self, view):
         self.view = view
+
+    async def wait(self):
+        self.quit_event = anyio.Event() if self.quit_event is None else self.quit_event
+        await self.quit_event.wait()
+        raise  KeyboardInterrupt("User quits")
 
     async def receptor(self, role, stream):
         photometer = self.ref_photometer if role == 'ref' else  self.test_photometer
@@ -75,19 +81,16 @@ class Controller:
                     message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']}"
                     widget.write_line(message)
 
-    async def run_async(self):
-        self.view.quit_event = anyio.Event()
-        # Catching exception groups this way is pre-Python 3.11
-        with catch({
-            ValueError: handle_error,
-            KeyError: handle_error,
-            KeyboardInterrupt: handle_error,
-            #anyio.BrokenResourceError: handle_error,
-        }):
-            async with anyio.create_task_group() as tg:
-                tg.start_soon(self.test_photometer.readings)
-                tg.start_soon(self.ref_photometer.readings)
-                tg.start_soon(self.receptor, 'test', self.receive_stream2)
-                tg.start_soon(self.receptor, 'ref', self.receive_stream1)
-                await self.view.quit_event.wait()
-                raise  KeyboardInterrupt("User quits")
+    async def run_async_role(self, role):
+        async with anyio.create_task_group() as tg:
+            if role == 'ref':
+                with anyio.CancelScope() as cs:
+                    self.ref_cs = cs
+                    tg.start_soon(self.ref_photometer.readings)
+                    tg.start_soon(self.receptor, 'ref', self.receive_stream1)
+            else:
+                 with anyio.CancelScope() as cs:
+                    self.test_cs = cs
+                    tg.start_soon(self.test_photometer.readings)
+                    tg.start_soon(self.receptor, 'test', self.receive_stream2)
+                   
