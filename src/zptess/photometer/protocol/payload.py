@@ -62,6 +62,7 @@ class OldPayload:
 
     def __init__(self, parent):
         self.parent = parent
+        self.log = parent.log
         self._prev_msg = None
         parent.log.info("%6s: Using %s decoder", parent.label, self.__class__.__name__)
      
@@ -109,16 +110,15 @@ class OldPayload:
             self.parent.log.debug("Matched {name}", name=ur['name'])
         else:
             return False, None
-
         prev_message = self._deduplicate(message)
         return True, message
 
     def _deduplicate(self, message):
         if self._prev_msg is None:
-            self._prev_msg = message
+            self._prev_msg = message 
             return  False, None
-        if message['tamb'] == self._prev_msg['tamb'] and message['freq'] == self._prev_msg['tamb']:
-            log.warn("Duplicate payload: %s", message)
+        if message['tamb'] == self._prev_msg['tamb'] and message['freq'] == self._prev_msg['freq']:
+            self.log.warn("Duplicate payload: %s", message)
             result = (False, None)
         else:
             result = (True, self._prev_msg)
@@ -146,7 +146,7 @@ class JSONPayload:
             return  False, None
         result = (True, self._prev_msg) if self._prev_msg['udp'] != message['udp'] else (False, None)
         if not result[0]:
-            log.warn("Duplicate payload: %s", message)
+            self.log.warn("Duplicate payload: %s", message)
         self._prev_msg = message    
         return result
 
@@ -156,7 +156,7 @@ class JSONPayload:
 
     def decode(self, data: bytes, tstamp: datetime.datetime) -> (bool, dict):
         data = data.decode()
-        self.parent.log.info("<== %6s [%02d] %s", self.parent.label, len(data), data)
+        self.log.info("<== %6s [%02d] %s", self.parent.label, len(data), data)
         try:
             message = json.loads(data)
         except Exception as e:
