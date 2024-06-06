@@ -81,13 +81,12 @@ class Controller:
                     message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']}"
                     widget.write_line(message)
 
-    async def run_async_role(self, role):
+    async def run_async(self, role):
         async with anyio.create_task_group() as tg:
             if role == 'ref':
-                with anyio.CancelScope() as cs:
-                    self.ref_cs = cs
-                    tg.start_soon(self.ref_photometer.readings)
-                    tg.start_soon(self.receptor, 'ref', self.receive_stream1)
+                self.ref_cs = tg.cancel_scope
+                tg.start_soon(self.ref_photometer.readings)
+                tg.start_soon(self.receptor, 'ref', self.receive_stream1)
             else:
                  with anyio.CancelScope() as cs:
                     self.test_cs = cs

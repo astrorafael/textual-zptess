@@ -27,15 +27,14 @@ classifiers = [
 ]
 dependencies = [
   'python-decouple',  # Get info from enviromental variables
-  'pypubsub',         # Publish/Subscribe support Model/View/Controller
   # Async Database stuff
   'SQLAlchemy[asyncio]',
   'aiosqlite',
   # Async I/O
-  'anyio',
   'exceptiongroups', # For Python < 3.11
-  'asyncstdlib',
+  'anyio',
   'anyio-serial',
+  'asyncstdlib',
   'httpx',
   # Textual TUI
   'textual-dev'

@@ -118,14 +118,19 @@ class ZpTessApp(App[str]):
         self.controller.quit_event.set()
         self.exit(return_code=2)
 
-    @work(exclusive=True)
-    @on(Switch.Changed, "#ref_phot")
-    async def ref_switch_pressed(self):
-        log.info("REF SWITCH PRESSED")
-        await self.controller.run_async_role('ref')
 
+    @on(Switch.Changed, "#ref_phot")
+    async def ref_switch_pressed(self, message):
+        if message.control.value:
+            log.info("REF SWITCH PRESSED")
+            self.w = self.run_worker(self.controller.run_async('ref'), exclusive=True)
+        else:
+            self.w.cancel()
+
+    @work(exclusive=True,  exit_on_error=False)
     @on(Switch.Changed, "#tst_phot")
-    def tst_switch_pressed(self):
+    async def tst_switch_pressed(self, message):
         log.info("TST SWITCH PRESSED")
+        await self.controller.run_async('test')
 
 import anyio

@@ -18,6 +18,7 @@ import logging.handlers
 # Third party imports
 # -------------------
 
+import asyncio
 import anyio
 from exceptiongroup import catch, ExceptionGroup
 
@@ -54,8 +55,9 @@ async def bootstrap():
     with catch({
         ValueError: handle_error,
         KeyError: handle_error,
-        KeyboardInterrupt: handle_error
+        KeyboardInterrupt: handle_error,
         #anyio.BrokenResourceError: handle_error,
+        asyncio.exceptions.CancelledError: handle_error,
     }):
         controller = Controller()
         tui = ZpTessApp(controller)
