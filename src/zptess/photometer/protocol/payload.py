@@ -64,6 +64,7 @@ class OldPayload:
         self.parent = parent
         self.log = parent.log
         self._prev_msg = None
+        self._i = 1
         parent.log.info("%6s: Using %s decoder", parent.label, self.__class__.__name__)
      
     # ----------
@@ -102,6 +103,8 @@ class OldPayload:
         message['tsky']   = float(matchobj.group(3))/100.0
         message['zp']     = float(matchobj.group(4))/100.0
         message['tstamp'] = tstamp
+        message['udp'] = self._i
+        self._i += 1
         if ur['name'] == 'Hz message':
             message['freq']   = float(matchobj.group(1))/1.0
             self.parent.log.debug("Matched {name}", name=ur['name'])

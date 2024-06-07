@@ -127,7 +127,7 @@ class SerialTransport:
         self.port = port
         self.baudrate = baudrate
         self.serial = None
-
+ 
     async def readings(self):
         '''This is meant to be a task'''
         self.serial = aioserial.AioSerial(port=self.port, baudrate=self.baudrate)
