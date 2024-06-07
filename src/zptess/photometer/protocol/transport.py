@@ -70,7 +70,8 @@ class UDPTransport(asyncio.DatagramProtocol):
         self.parent.handle_readings(payload, now)
 
     def connection_lost(self, exc):
-        self.on_conn_lost.set_result(True)
+        pass
+        #self.on_conn_lost.set_result(True)
 
     async def readings(self):
         loop = asyncio.get_running_loop()

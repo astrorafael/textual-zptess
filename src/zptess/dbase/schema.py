@@ -26,7 +26,6 @@ from sqlalchemy.orm import mapped_column, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine
 
-import anyio
 import decouple
 
 #--------------
@@ -130,4 +129,4 @@ def main():
     args = parser.parse_args(sys.argv[1:])
     configure(args)
     url = decouple.config('DATABASE_URL')
-    anyio.run(schema, url, args.verbose)
+    asynncio.run(schema(url, args.verbose))

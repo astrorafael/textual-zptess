@@ -120,5 +120,3 @@ class ZpTessApp(App[str]):
             self.controller.start_readings('test')
         else:
             self.controller.cancel_readings('test')
-
-import anyio

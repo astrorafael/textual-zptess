@@ -32,7 +32,7 @@ dependencies = [
   'aiosqlite',
   # Async I/O and other utilities
   'aioserial',
-  'httpx',
+  'aiohttp',
   # Textual TUI
   'textual-dev'
 ]

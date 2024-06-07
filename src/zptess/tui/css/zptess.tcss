@@ -1,3 +1,8 @@
+App {
+	width: 114;
+	height: 32;
+}
+
 Footer {
 	height: 1;
 }
@@ -11,8 +16,13 @@ Footer {
 	background: black;
 }
 
+.table {
+	 height: 5fr;
+}
+
 .box {
-    border: solid green;
+    border: heavy yellow;
+    height: 1fr;
 }
 
 Switch {

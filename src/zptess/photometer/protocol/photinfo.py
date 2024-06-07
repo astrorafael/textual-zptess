@@ -17,7 +17,7 @@ import logging
 # Third Party imports
 # -------------------
 
-import httpx
+import aiohttp
 import decouple
 
 from sqlalchemy import text
@@ -79,9 +79,9 @@ class HTMLInfo:
         result['tstamp'] = datetime.datetime.now(datetime.timezone.utc)
         url = self._make_state_url()
         self.log.info("%6s  get info from %s", label, url)
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=timeout)
-            text = response.text
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=timeout) as response:
+                text = await response.text()
         matchobj = self.GET_INFO['name'].search(text)
         if not matchobj:
             self.log.error("%6s name not found!. Check unit's name", label)
