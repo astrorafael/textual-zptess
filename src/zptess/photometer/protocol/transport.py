@@ -10,13 +10,13 @@
 import socket
 import logging
 import datetime
+import asyncio
 
 # -----------------
 # Third Party imports
 # -------------------
 
-import anyio
-import anyio_serial
+import aioserial
 
 #--------------
 # local imports
@@ -30,73 +30,116 @@ import anyio_serial
 # Module global variables
 # -----------------------
 
+
+
+
 # -------------------
 # Auxiliary functions
 # -------------------
 
-class UDPTransport:
+class TESSWProtocol:
 
-    def __init__(self, parent, port=2255, task_status = anyio.TASK_STATUS_IGNORED):
+    def connection_made(self, transport):
+        log.debug("Conectado al broadcast Socket UDP del TESS-W")
+        self.transport = transport
+
+    def datagram_received(self, data, addr):
+        '''cada vez que se recibe un mensaje del TESS-W se llama a esta funcion automaticamente'''
+        try:
+            message = json.loads(data.decode())
+        except Exception as e:
+            print(e)
+        else:
+            # Procesa el mensaje o hace lo que sea con el
+            log.debug(message) 
+
+
+class UDPTransport(asyncio.DatagramProtocol):
+
+    def __init__(self, parent, port=2255):
         self.parent = parent
         self.log = parent.log
         self.local_host = '0.0.0.0'
         self.local_port = port
-        self.task_status = task_status
+
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def datagram_received(self, payload, addr):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        self.parent.handle_readings(payload, now)
+
+    def connection_lost(self, exc):
+        self.on_conn_lost.set_result(True)
 
     async def readings(self):
-        '''This is meant to be a task'''
-        async with await anyio.create_udp_socket(
-            family = socket.AF_INET, 
-            local_host = self.local_host,
-            local_port = self.local_port
-        ) as udp:
-            self.task_status.started()
-            async for payload, (host, port) in udp:
-                now = datetime.datetime.now(datetime.timezone.utc)
-                await self.parent.handle_readings(payload, now)
+        loop = asyncio.get_running_loop()
+        self.on_conn_lost = loop.create_future()
+        transport, self.protocol = await loop.create_datagram_endpoint(
+            lambda: self,
+            local_addr=(self.local_host, self.local_port)
+        )
+        try:
+            await self.on_conn_lost
+        finally:
+            self.transport.close()
+        
 
 
-class TCPTransport:
+class TCPTransport(asyncio.Protocol):
 
-    def __init__(self, parent, host="192.168.4.1", port=23, task_status = anyio.TASK_STATUS_IGNORED):
+    def __init__(self, parent, host="192.168.4.1", port=23):
         self.parent = parent
         self.log = parent.log
         self.host = host
         self.port = port
         self.task_status = task_status
 
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def data_received(self, data):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        self.parent.handle_readings(payload, now)
+
+    def connection_lost(self, exc):
+        self.on_conn_lost.set_result(True)
+
     async def readings(self):
-        '''This is meant to be a task'''
-        async with await anyio.connect_tcp(
-            remote_host = self.host, 
-            remote_port = self.port 
-        ) as tcp:
-            self.task_status.started()
-            async for payload in tcp:
-                now = datetime.datetime.now(datetime.timezone.utc)
-                await self.parent.handle_readings(payload, now)
+        loop = asyncio.get_running_loop()
+        self.on_conn_lost = loop.create_future()
+        transport, self.protocol = await loop.create_connection(
+            lambda: self,
+            self.host, self.port
+        )
+        try:
+            await self.on_conn_lost
+        finally:
+            self.transport.close()
+
 
 
 class SerialTransport:
     
-    def __init__(self, parent, port="/dev/ttyUSB0", baudrate=9600, task_status = anyio.TASK_STATUS_IGNORED):
+    def __init__(self, parent, port="/dev/ttyUSB0", baudrate=9600):
         self.parent = parent
         self.log = parent.log
-        self.baudrate = baudrate
         self.port = port
-        self.task_status = task_status
+        self.baudrate = baudrate
+        self.serial = None
 
     async def readings(self):
         '''This is meant to be a task'''
-        async with anyio_serial.Serial(
-            port = self.port, 
-            baudrate = self.baudrate
-        ) as serial_port:
-            self.task_status.started()
-            while True:
-                payload = await serial_port.receive_until(delimiter=b'\r\n', max_bytes = 4096)
+        self.serial = aioserial.AioSerial(port=self.port, baudrate=self.baudrate)
+        while self.serial is not None:
+            try:
+                payload = await self.serial.readline_async()
                 now = datetime.datetime.now(datetime.timezone.utc)
+                payload = payload[:-2] # Strips \r\n
                 if len(payload):
-                    await self.parent.handle_readings(payload, now)
+                    self.parent.handle_readings(payload, now)
+            except:
+                self.serial.close()
+                self.serial = None
 
                     

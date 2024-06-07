@@ -41,27 +41,10 @@ log = logging.getLogger()
 # Auxiliary functions
 # -------------------
 
-ROWS = [
-    ("Property", "Value"),
-    ("Name", "stars2"),
-    ("Role", "TEST"),
-    ("MAC address", "AA:BB:CC:DD:EE:FF"),
-    ("Zero Point",  20.50),
-    ("Freq. Offset", 0.0),
-]
-
-METADATA = {
-    "Name": "stars2",
-    "Role": "TEST",
-    "MAC address": "AA:BB:CC:DD:EE:FF",
-    "Zero Point":  20.50,
-    "Freq. Offset": 0.0,
-}
-
 class ZpTessApp(App[str]):
 
     TITLE = "ZPTESS"
-    SUB_TITLE = "TESS-W Zero Point Calibration tools"
+    SUB_TITLE = "TESS-W Zero Point Calibration tool"
 
     # Seems the bindings are for the Footer widget
     BINDINGS = [
@@ -105,7 +88,12 @@ class ZpTessApp(App[str]):
         self.tst_log.border_title = "TEST LOG"
         self.ref_switch.border_title = "ON/OFF"
         self.tst_switch.border_title = "ON/OFF"
-     
+    
+    def clear_metadata(self, role):
+        widget = self.query_one("#ref_metadata") if role == 'ref' else self.query_one("#tst_metadata")
+        widget.clear()
+
+
     def get_log_widget(self, role):
         return self.ref_log if role == 'ref' else self.tst_log
 
@@ -120,17 +108,17 @@ class ZpTessApp(App[str]):
 
 
     @on(Switch.Changed, "#ref_phot")
-    async def ref_switch_pressed(self, message):
+    def ref_switch_pressed(self, message):
         if message.control.value:
-            log.info("REF SWITCH PRESSED")
-            self.w = self.run_worker(self.controller.run_async('ref'), exclusive=True)
+            self.controller.start_readings('ref')
         else:
-            self.w.cancel()
+            self.controller.cancel_readings('ref')
 
-    @work(exclusive=True,  exit_on_error=False)
     @on(Switch.Changed, "#tst_phot")
-    async def tst_switch_pressed(self, message):
-        log.info("TST SWITCH PRESSED")
-        await self.controller.run_async('test')
+    def tst_switch_pressed(self, message):
+        if message.control.value:
+            self.controller.start_readings('test')
+        else:
+            self.controller.cancel_readings('test')
 
 import anyio

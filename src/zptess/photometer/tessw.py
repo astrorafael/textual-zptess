@@ -10,13 +10,14 @@
 
 import logging
 import datetime
+import asyncio
 
 #--------------------
 # Third Party imports
 # -------------------
 
 import decouple
-import anyio
+
 
 #--------------
 # local imports
@@ -56,12 +57,12 @@ from zptess.utils.misc import chop, label
 
 class Photometer:
 
-    def __init__(self, role, old_payload, stream):
+    def __init__(self, role, old_payload):
         self.role = role
         self.label = label(role)
         self.log = logging.getLogger(self.label)
         self.decoder = OldPayload(self) if old_payload else JSONPayload(self)
-        self.stream = stream
+        self._queue = asyncio.Queue()
         device_url = decouple.config('REF_ENDPOINT') if role == 'ref' else  decouple.config('TEST_ENDPOINT')
         transport, name, number = chop(device_url,sep=':')
         number = int(number) if number else 80
@@ -76,16 +77,22 @@ class Photometer:
         else:
             self.transport = SerialTransport(self, port=name, baudrate=number)
         
+    @property
+    def queue(self):
+        return self._queue
+
     # -----------
     # Private API
     # -----------
 
-    async def handle_readings(self, payload, timestamp):
+    def handle_readings(self, payload, timestamp):
         flag, message = self.decoder.decode(payload, timestamp)
+        # message is now a dict containing the timestamp among other fields
         if flag:
             try:
-                await self.stream.send(message)
-            except anyio.BrokenResourceError:
+                self._queue.put_nowait(message)
+            except Exception as e:
+                self.log.error("%s", e)
                 self.log.error("receiver lost, discarded message")
 
 
@@ -94,8 +101,7 @@ class Photometer:
     # ----------
 
     async def readings(self):
-        async with self.stream:
-            return await self.transport.readings()
+        return await self.transport.readings()
 
     async def get_info(self, timeout=5):
         return await self.info.get_info(timeout)

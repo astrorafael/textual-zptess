@@ -12,22 +12,17 @@ import os
 import sys
 import argparse
 import logging
+import asyncio
 
 # -------------------
 # Third party imports
 # -------------------
 
-import asyncstdlib as a
-import anyio
-from exceptiongroup import catch, ExceptionGroup
-from textual import work
 
 #--------------
 # local imports
 # -------------
 
-from zptess import TEST
-from zptess.utils.misc import label
 from zptess.photometer.tessw import Photometer
 
 # ----------------
@@ -46,50 +41,55 @@ log = logging.getLogger()
 # -------------------
 
 
-def handle_error(excgroup: ExceptionGroup) -> None:
-    for exc in excgroup.exceptions:
-        log.error(exc)
 
 class Controller:
 
     def __init__(self):
-        self.send_stream1, self.receive_stream1 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
-        self.ref_photometer = Photometer(role='ref', old_payload=True, stream=self.send_stream1)
-        self.send_stream2, self.receive_stream2 = anyio.create_memory_object_stream[dict](max_buffer_size=4)
-        self.test_photometer =  Photometer(role='test', old_payload=False, stream=self.send_stream2)
+        self.ref_photometer = Photometer(role='ref', old_payload=True)
+        self.tst_photometer =  Photometer(role='test', old_payload=False)
         self.quit_event =  None
 
     def set_view(self, view):
         self.view = view
 
     async def wait(self):
-        self.quit_event = anyio.Event() if self.quit_event is None else self.quit_event
+        self.quit_event = asyncio.Event() if self.quit_event is None else self.quit_event
         await self.quit_event.wait()
         raise  KeyboardInterrupt("User quits")
 
-    async def receptor(self, role, stream):
-        photometer = self.ref_photometer if role == 'ref' else  self.test_photometer
+    async def receptor(self, role, photometer, queue):
         try:
             info = await photometer.get_info()
+            self.view.clear_metadata(role)
             self.view.update_metadata(role, info)
         except Exception as e:
             log.error(e)
         else:
-            widget = self.view.get_log_widget(role)
-            async with stream:
-                async for i, msg in a.enumerate(stream, start=1):
-                    message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']}"
-                    widget.write_line(message)
+            while True:
+                widget = self.view.get_log_widget(role)
+                msg = await queue.get()
+                message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']}"
+                widget.write_line(message)
+           
+    def cancel_readings(self, role):
+        if role == 'ref':
+            self.ref_task.cancel()
+            self.ref_reader.cancel()
+        else:
+            self.tst_task.cancel()
+            self.tst_task.cancel()
+        widget = self.view.get_log_widget(role)
+        widget.write_line("READINGS PAUSED")
 
-    async def run_async(self, role):
-        async with anyio.create_task_group() as tg:
-            if role == 'ref':
-                self.ref_cs = tg.cancel_scope
-                tg.start_soon(self.ref_photometer.readings)
-                tg.start_soon(self.receptor, 'ref', self.receive_stream1)
-            else:
-                 with anyio.CancelScope() as cs:
-                    self.test_cs = cs
-                    tg.start_soon(self.test_photometer.readings)
-                    tg.start_soon(self.receptor, 'test', self.receive_stream2)
+    def start_readings(self, role):
+        if role == 'ref':
+            photometer = self.ref_photometer
+            queue = photometer.queue
+            self.ref_reader = asyncio.create_task(self.receptor(role, photometer, queue))
+            self.ref_task = asyncio.create_task(photometer.readings())
+        else:
+            photometer = self.tst_photometer
+            queue = photometer.queue
+            self.tst_reader = asyncio.create_task(self.receptor(role, photometer, queue))
+            self.tst_task = asyncio.create_task(photometer.readings())
                    

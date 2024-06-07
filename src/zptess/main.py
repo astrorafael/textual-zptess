@@ -8,19 +8,14 @@
 # System wide imports
 # -------------------
 
-import os
 import sys
-import argparse
 import logging
-import logging.handlers
 
 # -------------------
 # Third party imports
 # -------------------
 
 import asyncio
-import anyio
-from exceptiongroup import catch, ExceptionGroup
 
 #--------------
 # local imports
@@ -47,25 +42,13 @@ log = logging.getLogger()
 # Auxiliary functions
 # -------------------
 
-def handle_error(excgroup: ExceptionGroup) -> None:
-    for exc in excgroup.exceptions:
-        log.error(exc)
-
 async def bootstrap():
-    with catch({
-        ValueError: handle_error,
-        KeyError: handle_error,
-        KeyboardInterrupt: handle_error,
-        #anyio.BrokenResourceError: handle_error,
-        asyncio.exceptions.CancelledError: handle_error,
-    }):
-        controller = Controller()
-        tui = ZpTessApp(controller)
-        controller.set_view(tui)
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(tui.run_async)
-            tg.start_soon(controller.wait)
-           
+    controller = Controller()
+    tui = ZpTessApp(controller)
+    controller.set_view(tui)
+    t1 = asyncio.create_task(tui.run_async())
+    t2 = asyncio.create_task(controller.wait())
+    await asyncio.gather(t1, t2)
 
 def main():
     '''The main entry point specified by pyproject.toml'''
@@ -77,4 +60,7 @@ def main():
    
     args = parser.parse_args(sys.argv[1:])
     configure(args)
-    anyio.run(bootstrap)
+    try:
+        asyncio.run(bootstrap())
+    except KeyboardInterrupt:
+        log.warn("Application quits by user request")
