@@ -33,6 +33,8 @@ dependencies = [
   # Async I/O and other utilities
   'aioserial',
   'aiohttp',
+  #'exceptiongroups', # For Python < 3.11 when using TaskGroups
+  #'asyncstdlib', # async counterparts such as aenumerate()
   # Textual TUI
   'textual-dev'
 ]
