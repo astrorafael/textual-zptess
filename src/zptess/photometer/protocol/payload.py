@@ -103,7 +103,7 @@ class OldPayload:
         message['tsky']   = float(matchobj.group(3))/100.0
         message['zp']     = float(matchobj.group(4))/100.0
         message['tstamp'] = tstamp
-        message['udp'] = self._i
+        message['seq'] = self._i
         self._i += 1
         if ur['name'] == 'Hz message':
             message['freq']   = float(matchobj.group(1))/1.0
@@ -149,7 +149,7 @@ class JSONPayload:
         if self._prev_msg is None:
             self._prev_msg = message
             return  False, None
-        result = (True, self._prev_msg) if self._prev_msg['udp'] != message['udp'] else (False, None)
+        result = (True, self._prev_msg) if self._prev_msg['seq'] != message['seq'] else (False, None)
         if not result[0]:
             self.log.warn("Duplicate payload: %s", message)
         self._prev_msg = message    
@@ -169,6 +169,8 @@ class JSONPayload:
         else:
             if type(message) == dict:
                 message['tstamp'] = tstamp
+                message['seq'] = message['udp']
+                del message['udp']
                 flag, prev_message = self._deduplicate(message)
                 return flag, prev_message
             else:

@@ -72,7 +72,7 @@ class Controller:
             while True:
                 widget = self.view.get_log_widget(role)
                 msg = await self.photometer[role].queue.get()
-                message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']}, tsky={msg['tsky']}"
+                message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('seq')}] f={msg['freq']} Hz, tbox={msg['tamb']}, tsky={msg['tsky']}"
                 widget.write_line(message)
            
     def cancel_readings(self, role):
