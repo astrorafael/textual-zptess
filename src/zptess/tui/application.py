@@ -60,9 +60,10 @@ class ZpTessApp(App[str]):
     def __init__(self, controller):
         super().__init__()
         self.controller = controller
-        self.log_widget = [None, None]
-        self.switch = [None, None]
-        self.metadata_widget = [None, None]
+        # Widget references in REF/TEST pairs
+        self.log_w = [None, None]
+        self.switch_w = [None, None]
+        self.metadata_w = [None, None]
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -85,23 +86,23 @@ class ZpTessApp(App[str]):
             table.add_columns(*("Property", "Value"))
             table.fixed_columns = 2
             table.show_cursor = False
-        self.log_widget[REF] = self.query_one("#ref_log")
-        self.log_widget[TEST] = self.query_one("#tst_log")
-        self.switch[REF] = self.query_one("#ref_phot")
-        self.switch[TEST] = self.query_one("#tst_phot")
-        self.log_widget[REF].border_title = "REFERENCE LOG"
-        self.log_widget[TEST].border_title = "TEST LOG"
-        self.metadata_widget[REF] =  self.query_one("#ref_metadata")
-        self.metadata_widget[TEST] = self.query_one("#tst_metadata")
+        self.log_w[REF] = self.query_one("#ref_log")
+        self.log_w[TEST] = self.query_one("#tst_log")
+        self.log_w[REF].border_title = "REFERENCE LOG"
+        self.log_w[TEST].border_title = "TEST LOG"
+        self.switch_w[REF] = self.query_one("#ref_phot")
+        self.switch_w[TEST] = self.query_one("#tst_phot")
+        self.metadata_w[REF] =  self.query_one("#ref_metadata")
+        self.metadata_w[TEST] = self.query_one("#tst_metadata")
     
     def clear_metadata(self, role):
-        self.metadata_widget[role].clear()
+        self.metadata_w[role].clear()
 
     def get_log_widget(self, role):
-        return self.log_widget[role]
+        return self.log_w[role]
 
     def update_metadata(self, role, metadata):
-        self.metadata_widget[role].add_rows(metadata.items())
+        self.metadata_w[role].add_rows(metadata.items())
     
     def action_quit(self):
         self.controller.quit_event.set()
