@@ -18,5 +18,6 @@ REF_LABEL  = 'REF.'
 def label(role):
 	return REF_LABEL.upper() if role == REF else TEST_LABEL.upper()
 
+# By exclusive OR
 def other(role):
 	return 1 ^ role
