@@ -19,14 +19,14 @@ import logging
 
 from textual import on, work
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static, Switch
-from textual.containers import Horizontal
+from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static, Switch, ProgressBar
+from textual.containers import Horizontal, Vertical
 
 #--------------
 # local imports
 # -------------
 
-from zptess.photometer import REF, TEST
+from zptess.photometer import REF, TEST, label
 
 # ----------------
 # Module constants
@@ -64,6 +64,7 @@ class ZpTessApp(App[str]):
         self.log_w = [None, None]
         self.switch_w = [None, None]
         self.metadata_w = [None, None]
+        self.progress_w = [None, None]
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -71,10 +72,18 @@ class ZpTessApp(App[str]):
         with Horizontal():
             with Horizontal():
                 yield DataTable(id="ref_metadata")
-                yield Switch(id="ref_phot")
+                with Vertical():
+                    yield Label("Photometer On/Off")
+                    yield Switch(id="ref_phot")
+                    yield Label("Ring Buffer")
+                    yield ProgressBar(id="ref_ring", total=100, show_eta=False)
             with Horizontal():
                 yield DataTable(id="tst_metadata")
-                yield Switch(id="tst_phot")
+                with Vertical():
+                    yield Label("Photometer On/Off")
+                    yield Switch(id="tst_phot")
+                    yield Label("Ring Buffer")
+                    yield ProgressBar(id="tst_ring", total=100, show_eta=False)
         yield Log(id="ref_log", classes="box")
         yield Log(id="tst_log", classes="box")
         
@@ -88,21 +97,30 @@ class ZpTessApp(App[str]):
             table.show_cursor = False
         self.log_w[REF] = self.query_one("#ref_log")
         self.log_w[TEST] = self.query_one("#tst_log")
-        self.log_w[REF].border_title = "REFERENCE LOG"
-        self.log_w[TEST].border_title = "TEST LOG"
+        self.log_w[REF].border_title = f"{label(REF)} LOG"
+        self.log_w[TEST].border_title = f"{label(TEST)} LOG"
         self.switch_w[REF] = self.query_one("#ref_phot")
         self.switch_w[TEST] = self.query_one("#tst_phot")
+        self.switch_w[REF].border_title = 'ON'
+        self.switch_w[TEST].border_title = 'ON'
         self.metadata_w[REF] =  self.query_one("#ref_metadata")
         self.metadata_w[TEST] = self.query_one("#tst_metadata")
+        self.progress_w[REF] =  self.query_one("#ref_ring")
+        self.progress_w[TEST] = self.query_one("#tst_ring")
+        self.progress_w[REF].total = 75
+        self.progress_w[TEST].total = 75
     
     def clear_metadata(self, role):
         self.metadata_w[role].clear()
 
-    def get_log_widget(self, role):
-        return self.log_w[role]
+    def append_log(self, role, line):
+        self.log_w[role].write_line(line)
 
     def update_metadata(self, role, metadata):
         self.metadata_w[role].add_rows(metadata.items())
+
+    def update_progress(self, role, amount):
+        self.progress_w[role].advance(amount)
     
     def action_quit(self):
         self.controller.quit_event.set()

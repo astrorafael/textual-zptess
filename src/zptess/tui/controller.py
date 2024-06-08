@@ -13,6 +13,7 @@ import sys
 import argparse
 import logging
 import asyncio
+import collections
 
 # -------------------
 # Third party imports
@@ -41,16 +42,21 @@ log = logging.getLogger()
 # Auxiliary functions
 # -------------------
 
-
+# -------
+# Classes
+# -------
 
 class Controller:
 
-    def __init__(self):
+    def __init__(self, ring_buffer_size=75):
         self.photometer = [None, None]
         self.producer = [None, None]
         self.consumer = [None, None]
+        self.ring = [None, None]
         self.photometer[REF] = Photometer(role=REF, old_payload=True)
         self.photometer[TEST] = Photometer(role=TEST, old_payload=False)
+        self.ring[REF] = collections.deque([], ring_buffer_size)
+        self.ring[TEST] = collections.deque([], ring_buffer_size)
         self.quit_event =  None
 
     def set_view(self, view):
@@ -70,16 +76,16 @@ class Controller:
             log.error(e)
         else:
             while True:
-                widget = self.view.get_log_widget(role)
                 msg = await self.photometer[role].queue.get()
-                message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('seq')}] f={msg['freq']} Hz, tbox={msg['tamb']}, tsky={msg['tsky']}"
-                widget.write_line(message)
-           
+                self.ring[role].append(msg)
+                line = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('seq')}] f={msg['freq']} Hz, tbox={msg['tamb']}, tsky={msg['tsky']}"
+                self.view.append_log(role, line)
+                self.view.update_progress(role, 1)
+
     def cancel_readings(self, role):
         self.producer[role].cancel()
         self.consumer[role].cancel()
-        widget = self.view.get_log_widget(role)
-        widget.write_line("READINGS PAUSED")
+        self.view.append_log(role, "READINGS PAUSED")
 
     def start_readings(self, role):
         self.consumer[role] = asyncio.create_task(self.receptor(role))
