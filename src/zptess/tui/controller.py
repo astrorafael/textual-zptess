@@ -46,8 +46,11 @@ log = logging.getLogger()
 class Controller:
 
     def __init__(self):
-        self.ref_photometer = Photometer(role=REF, old_payload=True)
-        self.tst_photometer = Photometer(role=TEST, old_payload=False)
+        self.photometer = [None, None]
+        self.producer = [None, None]
+        self.consumer = [None, None]
+        self.photometer[REF] = Photometer(role=REF, old_payload=True)
+        self.photometer[TEST] = Photometer(role=TEST, old_payload=False)
         self.quit_event =  None
 
     def set_view(self, view):
@@ -58,9 +61,9 @@ class Controller:
         await self.quit_event.wait()
         raise  KeyboardInterrupt("User quits")
 
-    async def receptor(self, role, photometer, queue):
+    async def receptor(self, role):
         try:
-            info = await photometer.get_info()
+            info = await self.photometer[role].get_info()
             self.view.clear_metadata(role)
             self.view.update_metadata(role, info)
         except Exception as e:
@@ -68,29 +71,17 @@ class Controller:
         else:
             while True:
                 widget = self.view.get_log_widget(role)
-                msg = await queue.get()
+                msg = await self.photometer[role].queue.get()
                 message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']} tsky={msg['tsky']}"
                 widget.write_line(message)
            
     def cancel_readings(self, role):
-        if role == REF:
-            self.ref_task.cancel()
-            self.ref_reader.cancel()
-        else:
-            self.tst_task.cancel()
-            self.tst_task.cancel()
+        self.producer[role].cancel()
+        self.consumer[role].cancel()
         widget = self.view.get_log_widget(role)
         widget.write_line("READINGS PAUSED")
 
     def start_readings(self, role):
-        if role == REF:
-            photometer = self.ref_photometer
-            queue = photometer.queue
-            self.ref_reader = asyncio.create_task(self.receptor(role, photometer, queue))
-            self.ref_task = asyncio.create_task(photometer.readings())
-        else:
-            photometer = self.tst_photometer
-            queue = photometer.queue
-            self.tst_reader = asyncio.create_task(self.receptor(role, photometer, queue))
-            self.tst_task = asyncio.create_task(photometer.readings())
-                   
+        self.consumer[role] = asyncio.create_task(self.receptor(role))
+        self.producer[role] = asyncio.create_task(self.photometer[role].readings())
+       
