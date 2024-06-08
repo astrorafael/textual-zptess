@@ -9,11 +9,14 @@
 # ---------
 
 # Photometer roles
-REF  = 0
-TEST = 1
+REF  = 1
+TEST = 0
 
 TEST_LABEL = 'TEST'
 REF_LABEL  = 'REF.'
 
 def label(role):
-	return REF_LABEL.lower() if role == REF else TEST_LABEL.lower()
+	return REF_LABEL.upper() if role == REF else TEST_LABEL.upper()
+
+def other(role):
+	return 1 ^ role
