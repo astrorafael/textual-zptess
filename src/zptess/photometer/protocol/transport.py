@@ -30,9 +30,6 @@ import aioserial
 # Module global variables
 # -----------------------
 
-
-
-
 # -------------------
 # Auxiliary functions
 # -------------------

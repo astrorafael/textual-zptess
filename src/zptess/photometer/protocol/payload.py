@@ -73,7 +73,7 @@ class OldPayload:
 
     def decode(self, data: bytes, tstamp: datetime.datetime) -> (bool, dict):
         data = data.decode()
-        self.parent.log.info("<== %6s [%02d] %s", self.parent.label, len(data), data)
+        self.parent.log.info("<== [%02d] %s", len(data), data)
         return self._handle_unsolicited_response(data, tstamp)
     
     # --------------
@@ -120,13 +120,15 @@ class OldPayload:
         if self._prev_msg is None:
             self._prev_msg = message 
             return  False, None
-        if message['tamb'] == self._prev_msg['tamb'] and message['freq'] == self._prev_msg['freq']:
+        if message['tamb'] == self._prev_msg['tamb'] and message['tsky'] == self._prev_msg['tsky'] and message['freq'] == self._prev_msg['freq']:
             self.log.warn("Duplicate payload: %s", message)
             result = (False, None)
         else:
             result = (True, self._prev_msg)
         self._prev_msg = message    
         return result
+
+
 
 class JSONPayload:
     """
@@ -159,7 +161,7 @@ class JSONPayload:
 
     def decode(self, data: bytes, tstamp: datetime.datetime) -> (bool, dict):
         data = data.decode()
-        self.log.info("<== %6s [%02d] %s", self.parent.label, len(data), data)
+        self.log.info("<== [%02d] %s", len(data), data)
         try:
             message = json.loads(data)
         except Exception as e:

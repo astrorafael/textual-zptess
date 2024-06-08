@@ -23,6 +23,7 @@ import asyncio
 # local imports
 # -------------
 
+from zptess.photometer import REF, TEST
 from zptess.photometer.tessw import Photometer
 
 # ----------------
@@ -45,8 +46,8 @@ log = logging.getLogger()
 class Controller:
 
     def __init__(self):
-        self.ref_photometer = Photometer(role='ref', old_payload=True)
-        self.tst_photometer =  Photometer(role='test', old_payload=False)
+        self.ref_photometer = Photometer(role=REF, old_payload=True)
+        self.tst_photometer = Photometer(role=TEST, old_payload=False)
         self.quit_event =  None
 
     def set_view(self, view):
@@ -68,11 +69,11 @@ class Controller:
             while True:
                 widget = self.view.get_log_widget(role)
                 msg = await queue.get()
-                message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']}"
+                message = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('udp')}] f={msg['freq']} Hz, tbox={msg['tamb']} tsky={msg['tsky']}"
                 widget.write_line(message)
            
     def cancel_readings(self, role):
-        if role == 'ref':
+        if role == REF:
             self.ref_task.cancel()
             self.ref_reader.cancel()
         else:
@@ -82,7 +83,7 @@ class Controller:
         widget.write_line("READINGS PAUSED")
 
     def start_readings(self, role):
-        if role == 'ref':
+        if role == REF:
             photometer = self.ref_photometer
             queue = photometer.queue
             self.ref_reader = asyncio.create_task(self.receptor(role, photometer, queue))

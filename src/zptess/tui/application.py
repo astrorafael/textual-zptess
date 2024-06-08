@@ -26,6 +26,8 @@ from textual.containers import Horizontal
 # local imports
 # -------------
 
+from zptess.photometer import REF, TEST
+
 # ----------------
 # Module constants
 # ----------------
@@ -90,15 +92,15 @@ class ZpTessApp(App[str]):
         self.tst_switch.border_title = "ON/OFF"
     
     def clear_metadata(self, role):
-        widget = self.query_one("#ref_metadata") if role == 'ref' else self.query_one("#tst_metadata")
+        widget = self.query_one("#ref_metadata") if role == REF else self.query_one("#tst_metadata")
         widget.clear()
 
 
     def get_log_widget(self, role):
-        return self.ref_log if role == 'ref' else self.tst_log
+        return self.ref_log if role == REF else self.tst_log
 
     def update_metadata(self, role, metadata):
-        ident = "#ref_metadata" if role == 'ref' else "#tst_metadata"
+        ident = "#ref_metadata" if role == REF else "#tst_metadata"
         table = self.query_one(ident)
         table.add_rows(metadata.items())
     
@@ -110,13 +112,13 @@ class ZpTessApp(App[str]):
     @on(Switch.Changed, "#ref_phot")
     def ref_switch_pressed(self, message):
         if message.control.value:
-            self.controller.start_readings('ref')
+            self.controller.start_readings(REF)
         else:
-            self.controller.cancel_readings('ref')
+            self.controller.cancel_readings(REF)
 
     @on(Switch.Changed, "#tst_phot")
     def tst_switch_pressed(self, message):
         if message.control.value:
-            self.controller.start_readings('test')
+            self.controller.start_readings(TEST)
         else:
-            self.controller.cancel_readings('test')
+            self.controller.cancel_readings(TEST)

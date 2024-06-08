@@ -10,8 +10,6 @@ from ._version import __version__
 # Module constants
 # ----------------
 
-TEST = 'TEST'
-REF  = 'REF.'
 
 # Photometer models
 TESSW = "TESS-W"

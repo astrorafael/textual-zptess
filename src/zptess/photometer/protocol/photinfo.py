@@ -27,6 +27,8 @@ from sqlalchemy.ext.asyncio import create_async_engine
 # local imports
 # -------------
 
+from zptess.photometer import REF, TEST
+
 # ----------------
 # Module constants
 # ----------------
@@ -64,7 +66,7 @@ class HTMLInfo:
         self.parent = parent
         self.log = parent.log
         self.addr = addr
-        self.log.info("%s Using %s Info", parent.label, self.__class__.__name__)
+        self.log.info("Using %s Info", self.__class__.__name__)
 
     # ----------------------------
     # Photometer Control interface
@@ -151,7 +153,7 @@ class DBaseInfo:
     def __init__(self, parent):
         self.parent = parent
         self.log = parent.log
-        self.log.info("%6s Using %s Info", parent.label, self.__class__.__name__)
+        self.log.info("Using %s Info", self.__class__.__name__)
         url = decouple.config('DATABASE_ASYNC_URL')
         self.engine = create_async_engine(url)
 
@@ -163,9 +165,9 @@ class DBaseInfo:
         '''
         Writes Zero Point to the device. 
         '''
-        if self.parent.role == 'test':
+        if self.parent.role == TEST:
             raise NotImplementedError("Can't save Zero Point on a database for the %s device", self.parent.label)
-        section = 'ref-device' if self.parent.role == 'ref' else 'test-device'
+        section = 'ref-device' if self.parent.role == REF else 'test-device'
         prop = 'zp'
         zero_point = str(zero_point)
         async with self.engine.begin() as conn:
@@ -179,7 +181,7 @@ class DBaseInfo:
         '''
         Get photometer information. 
         '''
-        section = 'ref-device' if self.parent.role == 'ref' else 'test-device'
+        section = 'ref-device' if self.parent.role == REF else 'test-device'
         async with self.engine.begin() as conn:
             result = await conn.execute(text("SELECT property, value FROM config_t WHERE section = :section"), 
                 {"section": section}

@@ -23,10 +23,12 @@ import decouple
 # local imports
 # -------------
 
+from zptess.photometer import label, REF, TEST
+
 from zptess.photometer.protocol.transport import UDPTransport, TCPTransport, SerialTransport
 from zptess.photometer.protocol.payload   import JSONPayload, OldPayload
 from zptess.photometer.protocol.photinfo  import HTMLInfo, DBaseInfo
-from zptess.utils.misc import chop, label
+from zptess.utils.misc import chop
 
 # ----------------
 # Module constants
@@ -63,10 +65,10 @@ class Photometer:
         self.log = logging.getLogger(self.label)
         self.decoder = OldPayload(self) if old_payload else JSONPayload(self)
         self._queue = asyncio.Queue()
-        device_url = decouple.config('REF_ENDPOINT') if role == 'ref' else  decouple.config('TEST_ENDPOINT')
+        device_url = decouple.config('REF_ENDPOINT') if role == REF else  decouple.config('TEST_ENDPOINT')
         transport, name, number = chop(device_url,sep=':')
         number = int(number) if number else 80
-        if transport == 'serial' and role == 'ref':
+        if transport == 'serial' and role == REF:
             self.info = DBaseInfo(self)
         else:
             self.info = HTMLInfo(self, addr=name)

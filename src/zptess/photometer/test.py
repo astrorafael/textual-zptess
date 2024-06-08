@@ -24,7 +24,7 @@ import asyncstdlib as a
 from exceptiongroup import catch, ExceptionGroup
 
 from zptess import __version__
-from zptess.utils.misc import label
+from zptess.photometer import label, REF, TEST
 from zptess.utils.argsparse import args_parser
 from zptess.utils.logging import configure
 from zptess.photometer.tessw import Photometer
@@ -37,10 +37,10 @@ def handle_error(excgroup: ExceptionGroup) -> None:
 
 async def async_main():
 
-    ref_photometer = Photometer(role='ref', old_payload=True)
+    ref_photometer = Photometer(role=REF, old_payload=True)
     ref_queue = ref_photometer.get_queue()
 
-    tst_photometer = Photometer(role='test', old_payload=False)
+    tst_photometer = Photometer(role=TEST, old_payload=False)
     tst_queue = tst_photometer.get_queue()
    
     logging.info("Obtaining Photometers info")
@@ -50,9 +50,9 @@ async def async_main():
 
     loop = asyncio.get_running_loop()
     t1 = loop.create_task(ref_photometer.readings())
-    t2 = loop.create_task(receptor('ref', ref_queue))
+    t2 = loop.create_task(receptor(REF, ref_queue))
     t3 = loop.create_task(tst_photometer.readings())
-    t4 = loop.create_task(receptor('test', tst_queue))
+    t4 = loop.create_task(receptor(TEST, tst_queue))
     await asyncio.gather(t1, t2)
 
 

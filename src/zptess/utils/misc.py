@@ -4,8 +4,6 @@
 # See the LICENSE file for details
 # ----------------------------------------------------------------------
 
-from zptess import TEST, REF
-
 def chop(string, sep=None):
     '''Chop a list of strings, separated by sep and 
     strips individual string items from leading and trailing blanks'''
@@ -14,5 +12,3 @@ def chop(string, sep=None):
     	chopped = tuple()
     return chopped
 
-def label(role):
-	return REF.lower() if role == 'ref' else TEST.lower()
