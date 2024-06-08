@@ -10,6 +10,7 @@
 
 import sys
 import logging
+import logging.handlers
 
 #--------------
 # local imports

@@ -37,22 +37,6 @@ import aioserial
 # Auxiliary functions
 # -------------------
 
-class TESSWProtocol:
-
-    def connection_made(self, transport):
-        log.debug("Conectado al broadcast Socket UDP del TESS-W")
-        self.transport = transport
-
-    def datagram_received(self, data, addr):
-        '''cada vez que se recibe un mensaje del TESS-W se llama a esta funcion automaticamente'''
-        try:
-            message = json.loads(data.decode())
-        except Exception as e:
-            print(e)
-        else:
-            # Procesa el mensaje o hace lo que sea con el
-            log.debug(message) 
-
 
 class UDPTransport(asyncio.DatagramProtocol):
 
@@ -70,8 +54,8 @@ class UDPTransport(asyncio.DatagramProtocol):
         self.parent.handle_readings(payload, now)
 
     def connection_lost(self, exc):
-        pass
-        #self.on_conn_lost.set_result(True)
+        if not  self.on_conn_lost.cancelled():
+            self.on_conn_lost.set_result(True)
 
     async def readings(self):
         loop = asyncio.get_running_loop()
@@ -104,7 +88,8 @@ class TCPTransport(asyncio.Protocol):
         self.parent.handle_readings(payload, now)
 
     def connection_lost(self, exc):
-        self.on_conn_lost.set_result(True)
+        if not  self.on_conn_lost.cancelled():
+            self.on_conn_lost.set_result(True)
 
     async def readings(self):
         loop = asyncio.get_running_loop()
