@@ -29,6 +29,7 @@ dependencies = [
   'python-decouple',  # Get info from enviromental variables
   # Async Database stuff
   'SQLAlchemy[asyncio]',
+  'alembic',
   'aiosqlite',
   # Async I/O and other utilities
   'aioserial',
