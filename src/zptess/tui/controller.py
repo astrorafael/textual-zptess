@@ -13,7 +13,6 @@ import sys
 import argparse
 import logging
 import asyncio
-import collections
 
 # -------------------
 # Third party imports
@@ -26,6 +25,7 @@ import collections
 
 from zptess.photometer import REF, TEST
 from zptess.photometer.tessw import Photometer
+from zptess.ring import RingBuffer 
 
 # ----------------
 # Module constants
@@ -55,8 +55,8 @@ class Controller:
         self.ring = [None, None]
         self.photometer[REF] = Photometer(role=REF, old_payload=True)
         self.photometer[TEST] = Photometer(role=TEST, old_payload=False)
-        self.ring[REF] = collections.deque([], ring_buffer_size)
-        self.ring[TEST] = collections.deque([], ring_buffer_size)
+        self.ring[REF] = RingBuffer(ring_buffer_size)
+        self.ring[TEST] = RingBuffer(ring_buffer_size)
         self.quit_event =  None
 
     def set_view(self, view):

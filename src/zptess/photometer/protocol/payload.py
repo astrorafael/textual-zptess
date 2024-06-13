@@ -113,8 +113,7 @@ class OldPayload:
             self.parent.log.debug("Matched {name}", name=ur['name'])
         else:
             return False, None
-        prev_message = self._deduplicate(message)
-        return True, message
+        return self._deduplicate(message)
 
     def _deduplicate(self, message):
         if self._prev_msg is None:

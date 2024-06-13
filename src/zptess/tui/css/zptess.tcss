@@ -7,7 +7,7 @@ Footer {
 	height: 1;
 }
 
-Label
+.mylabels
 {
 	margin: 1 0 0 0;	
 }

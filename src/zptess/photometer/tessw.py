@@ -39,6 +39,7 @@ from zptess.utils.misc import chop
 # Module global variables
 # -----------------------
 
+log = logging.getLogger(__name__)
 
 # ----------------
 # Module functions
@@ -96,6 +97,7 @@ class Photometer:
             except Exception as e:
                 self.log.error("%s", e)
                 self.log.error("receiver lost, discarded message")
+           
 
 
     # ----------

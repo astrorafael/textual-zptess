@@ -73,16 +73,16 @@ class ZpTessApp(App[str]):
             with Horizontal():
                 yield DataTable(id="ref_metadata")
                 with Vertical():
-                    yield Label("Photometer On/Off")
+                    yield Label("Photometer On/Off", classes="mylabels")
                     yield Switch(id="ref_phot")
-                    yield Label("Ring Buffer")
+                    yield Label("Ring Buffer", classes="mylabels")
                     yield ProgressBar(id="ref_ring", total=100, show_eta=False)
             with Horizontal():
                 yield DataTable(id="tst_metadata")
                 with Vertical():
-                    yield Label("Photometer On/Off")
+                    yield Label("Photometer On/Off", classes="mylabels")
                     yield Switch(id="tst_phot")
-                    yield Label("Ring Buffer")
+                    yield Label("Ring Buffer", classes="mylabels")
                     yield ProgressBar(id="tst_ring", total=100, show_eta=False)
         yield Log(id="ref_log", classes="box")
         yield Log(id="tst_log", classes="box")
