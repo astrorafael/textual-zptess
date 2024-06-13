@@ -7,6 +7,11 @@ Footer {
 	height: 1;
 }
 
+Label
+{
+	margin: 1 0 0 0;	
+}
+
 #ref_log {
 	background: darkblue;
 
