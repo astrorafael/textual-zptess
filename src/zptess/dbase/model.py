@@ -68,6 +68,9 @@ class Photometer(Model):
     zero_point:     Mapped[float]
     freq_offset:    Mapped[float]
 
+    # This is not a real column, it s meant for the ORM
+    samples: Mapped[List['Sample']] = relationship(back_populates="photometer")
+
     def __repr__(self) -> str:
         return f"TESS(id={self.id!r}, name={self.name!r}, mac={self.mac!r})"
    
@@ -96,6 +99,9 @@ class Sample(Model):
     freq:       Mapped[float]
     temp_box:   Mapped[float]
 
+    # This is not a real column, it s meant for the ORM
+    photometer: Mapped['Photometer'] = relationship(back_populates="samples")
+
     # rounds per sample (at least 1...)
     # This is not a real column, it s meant for the ORM
     rounds: Mapped[List['Round']] = relationship(secondary=SamplesRounds, back_populates="samples")
@@ -107,14 +113,14 @@ class Sample(Model):
         {})
 
     def __repr__(self) -> str:
-        return f"Sample(id={self.id!r}, freq={self.freq!r}, mag={self.mag!r}, seq={self.seq!r}, wave={self.wave})"
+        return f"Sample(id={self.id!r}, freq={self.freq!r}, mag={self.mag!r}, seq={self.seq!r})"
 
 
 class Round(Model):
     __tablename__ = "rounds_t"
 
     id:         Mapped[int] = mapped_column(primary_key=True)
-    seq:        Mapped[int] = mapped_column(Integer) # Round number form 1..NRounds
+    seq:        Mapped[int] = mapped_column('round', Integer) # Round number form 1..NRounds
     role:       Mapped[str] = mapped_column(String(4))
     session:    Mapped[int] = mapped_column(Integer)
     freq:       Mapped[Optional[float]] # Average of Median method
@@ -132,3 +138,11 @@ class Round(Model):
             role),
         {})
 
+class Batch(Model):
+    __tablename__ = "batch_t"
+
+    begin_tstamp:   Mapped[datetime] = mapped_column(DateTime, primary_key=True)
+    end_tstamp:     Mapped[Optional[datetime]] = mapped_column(DateTime)
+    email_sent:     Mapped[Optional[bool]]
+    calibrations:   Mapped[Optional[int]]
+    comment:        Mapped[Optional[str]] = mapped_column(String(255))

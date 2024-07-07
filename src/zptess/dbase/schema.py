@@ -35,7 +35,7 @@ from lica.sqlalchemy.asyncio.dbase import url, engine, Model, AsyncSession
 # -------------
 
 from .. import __version__
-from .model import Config
+from .model import Config, Sample
 
 # ----------------
 # Module constants
@@ -60,6 +60,10 @@ async def populate(async_session: async_sessionmaker[AsyncSession]) -> None:
             session.add(Config(section="calibration", prop="author", value="Rafael González"))
             session.add(Config(section="calibration", prop="samples", value=5))
             session.add(Config(section="calibration", prop="wavelength", value=350))
+
+
+            for i in range(0,16):
+                Sample()
     
 
 
