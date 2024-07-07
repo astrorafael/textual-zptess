@@ -162,3 +162,4 @@ cython_debug/
 # My own stuff
 *.db
 src/zptess/_version.py
+test*.py

@@ -82,3 +82,7 @@ def main():
     configure_log(args)
     log.info("Creating/Opening schema %s", url)
     asyncio.run(schema())
+
+
+if __name__ == '__main__':
+    main()
