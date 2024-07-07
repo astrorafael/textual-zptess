@@ -9,6 +9,7 @@
 # -------------------
 
 import sys
+import uuid
 import asyncio
 import logging
 
@@ -19,18 +20,22 @@ from datetime import datetime
 # SQLAlchemy imports
 # -------------------
 
-from sqlalchemy import create_engine, String, ForeignKey, PrimaryKeyConstraint
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column, relationship
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.asyncio import create_async_engine
+from lica.textual.argparse import args_parser
+from lica.textual.logging import configure_log
+from lica.textual.logging import configure_log
 
-import decouple
+from lica.sqlalchemy.asyncio.dbase import url, engine, Model, AsyncSession
+
 
 #--------------
 # local imports
 # -------------
+
+from .. import __version__
+from .model import Photometer, Samples, Config
 
 # ----------------
 # Module constants
@@ -40,93 +45,40 @@ import decouple
 # Module global variables
 # -----------------------
 
-# get the root logger
+# get the module logger
 log = logging.getLogger(__name__)
-
-# ---------------------
-# Data Model as classes
-# ---------------------
-
-Base = declarative_base()
-
-class Config(Base):
-
-    __tablename__ = "config_t"
-
-    section:   Mapped[str] = mapped_column(String(32))
-    prop:      Mapped[str] = mapped_column('property', String(255))
-    value:     Mapped[str] = mapped_column(String(255))
-
-    __table_args__ = (
-        PrimaryKeyConstraint(
-            section,
-            prop),
-        {})
-
-    def __repr__(self) -> str:
-        return f"TESS(id={self.id!r}, nname={self.name!r}, mac={self.mac!r})"
-
-
-class Tess(Base):
-
-    __tablename__ = "tess_t"
-
-    id:        Mapped[int] = mapped_column(primary_key=True)
-    session:   Mapped[datetime]
-    name:      Mapped[str] = mapped_column(String(10))
-    mac:       Mapped[str] = mapped_column(String(17))
-
-    # This is not a real column, it s meant for the ORM
-    samples:   Mapped[List['Samples']] = relationship(back_populates="tess")
-
-    def __repr__(self) -> str:
-        return f"TESS(id={self.id!r}, nname={self.name!r}, mac={self.mac!r})"
-   
-
-class Samples(Base):
-    __tablename__ = "samples_t"
-
-    id:        Mapped[int] = mapped_column(primary_key=True)
-    tess_id:   Mapped[int] = mapped_column(ForeignKey("tess_t.id"))
-   
-    tstamp:    Mapped[datetime]
-    session:   Mapped[datetime]
-    seq:       Mapped[int]
-    mag:       Mapped[float]
-    freq:      Mapped[float]
-    temp_box:  Mapped[float]
-
-    # This is not a real column, it s meant for the ORM
-    tess:      Mapped['Tess'] = relationship(back_populates="samples")
-
-    def __repr__(self) -> str:
-        return f"Sample(id={self.id!r}, freq={self.freq!r}, mag={self.mag!r}, seq={self.seq!r})"
+logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 # -------------------
 # Auxiliary functions
 # -------------------
 
-async def schema(url, verbose) -> None:
-    '''The main entry point specified by pyproject.toml'''
-    log.info("Creating/Opening schema %s", url)
-    engine = create_async_engine(url, echo=verbose)
+async def populate(async_session: async_sessionmaker[AsyncSession]) -> None:
+    async with async_session() as session:
+        async with session.begin():
+            session.add(Config(section="database", prop="uuid", value=str(uuid.uuid4())))
+            session.add(Config(section="calibration", prop="author", value="Rafael González"))
+            session.add(Config(section="calibration", prop="samples", value=5))
+            session.add(Config(section="calibration", prop="wavelength", value=350))
+    
+
+
+async def schema() -> None:
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        #await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(Model.metadata.drop_all)
+        await conn.run_sync(Model.metadata.create_all)
+        await populate(AsyncSession)
     await engine.dispose()
 
+
 def main():
-
-    from zptess import __version__
-    from zptess.utils.argsparse import args_parser
-    from zptess.utils.logging import configure
-
+    '''The main entry point specified by pyproject.toml'''
     parser = args_parser(
         name = __name__,
         version = __version__,
-        description = "Example SQLAlchemy App"
+        description = "TESSDB initial Schema generation"
     )
     args = parser.parse_args(sys.argv[1:])
-    configure(args)
-    url = decouple.config('DATABASE_URL')
-    asynncio.run(schema(url, args.verbose))
+    configure_log(args)
+    log.info("Creating/Opening schema %s", url)
+    asyncio.run(schema())

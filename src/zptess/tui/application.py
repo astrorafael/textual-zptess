@@ -13,62 +13,111 @@ import sys
 import argparse
 import logging
 
+import statistics
+
 # ---------------
 # Textual imports
 # ---------------
 
 from textual import on, work
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static, Switch, ProgressBar
+from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static, Switch, ProgressBar, Sparkline, Rule
+from textual.widgets import  TabbedContent, TabPane
+
 from textual.containers import Horizontal, Vertical
 
 #--------------
 # local imports
 # -------------
 
-from zptess.photometer import REF, TEST, label
+from lica.asyncio.photometer import REF, TEST, label
+from lica.textual.widgets.about import About
 
 # ----------------
 # Module constants
 # ----------------
 
+
+CSS_PKG = 'zptess.tui.resources.css'
+CSS_FILE = 'mytextualapp.tcss'
+# Outside the Python packages
+CSS_PATH =  os.path.join(os.getcwd(), CSS_FILE)
+
+ABOUT_PKG = 'zptess.tui.resources.about'
+ABOUT_RES = 'description.md'
+
 # -----------------------
 # Module global variables
 # -----------------------
 
-# get the root logger
-log = logging.getLogger()
+log = logging.getLogger(__name__)
+
+
+# Instead of a long, embeddded string, we read it as a Python resource
+if sys.version_info[1] < 11:
+    from pkg_resources import resource_string as resource_bytes
+    DEFAULT_CSS = resource_bytes(CSS_PKG, CSS_FILE).decode('utf-8')
+    ABOUT = resource_bytes(ABOUT_PKG, ABOUT_RES).decode('utf-8')
+else:
+    from importlib_resources import files
+    DEFAULT_CSS = files(CSS_PKG).joinpath(CSS_FILE).read_text()
+    ABOUT = files(ABOUT_PKG).joinpath(ABOUT_RES).read_text()
 
 # -------------------
 # Auxiliary functions
 # -------------------
 
-class ZpTessApp(App[str]):
+class MyTextualApp(App[str]):
 
     TITLE = "ZPTESS"
     SUB_TITLE = "TESS-W Zero Point Calibration tool"
 
     # Seems the bindings are for the Footer widget
     BINDINGS = [
-        ("q", "quit", "Quit Application")
+        ("q", "quit", "Quit"),
+        ("a", "about", "About")
     ]
 
-    CSS_PATH = [
-        os.path.join("css", "zptess.tcss"),
-    ]
+    DEFAULT_CSS = DEFAULT_CSS
+    CSS_PATH = CSS_PATH
 
-    def __init__(self, controller):
-        super().__init__()
+    def __init__(self, controller, description):
         self.controller = controller
         # Widget references in REF/TEST pairs
         self.log_w = [None, None]
         self.switch_w = [None, None]
         self.metadata_w = [None, None]
         self.progress_w = [None, None]
+        self.graph_w = [None, None]
+        self.SUB_TITLE = description
+        super().__init__()
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         yield Footer()
+        with Horizontal():
+            with Horizontal():
+                yield DataTable(id="ref_metadata")
+                with Vertical():
+                    yield Label("Photometer On/Off", classes="mylabels")
+                    yield Switch(id="ref_phot")
+                    yield Label("Ring Buffer", classes="mylabels")
+                    yield ProgressBar(id="ref_ring", total=100, show_eta=False)
+                    yield Sparkline([], id="ref_graph", summary_function=statistics.median_low)
+            with Horizontal():
+                yield DataTable(id="tst_metadata")
+                with Vertical():
+                    yield Label("Photometer On/Off", classes="mylabels")
+                    yield Switch(id="tst_phot")
+                    yield Label("Ring Buffer", classes="mylabels")
+                    yield ProgressBar(id="tst_ring", total=100, show_eta=False)
+                    yield Sparkline([], id="tst_graph", summary_function=statistics.median_low)
+        yield Log(id="ref_log", classes="box")
+        yield Log(id="tst_log", classes="box")
+
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=True)
         with Horizontal():
             with Horizontal():
                 yield DataTable(id="ref_metadata")
@@ -84,8 +133,15 @@ class ZpTessApp(App[str]):
                     yield Switch(id="tst_phot")
                     yield Label("Ring Buffer", classes="mylabels")
                     yield ProgressBar(id="tst_ring", total=100, show_eta=False)
-        yield Log(id="ref_log", classes="box")
-        yield Log(id="tst_log", classes="box")
+        with TabbedContent(initial="logs"):
+            with TabPane("Logs", id="logs"):
+                yield Log(id="ref_log", classes="box")
+                yield Log(id="tst_log", classes="box")
+            with TabPane("Graphs", id="graphs"):
+                yield Sparkline([], id="ref_graph", summary_function=statistics.median_low)
+                yield Rule(line_style="dashed")
+                yield Sparkline([], id="tst_graph", summary_function=statistics.median_low)
+        yield Footer()
         
 
     def on_mount(self) -> None:
@@ -95,10 +151,17 @@ class ZpTessApp(App[str]):
             table.add_columns(*("Property", "Value"))
             table.fixed_columns = 2
             table.show_cursor = False
+        
         self.log_w[REF] = self.query_one("#ref_log")
         self.log_w[TEST] = self.query_one("#tst_log")
         self.log_w[REF].border_title = f"{label(REF)} LOG"
         self.log_w[TEST].border_title = f"{label(TEST)} LOG"
+
+        self.graph_w[REF] = self.query_one("#ref_graph")
+        self.graph_w[TEST] = self.query_one("#tst_graph")
+        self.graph_w[REF].border_title = f"{label(REF)} LOG"
+        self.graph_w[TEST].border_title = f"{label(TEST)} LOG"
+        
         self.switch_w[REF] = self.query_one("#ref_phot")
         self.switch_w[TEST] = self.query_one("#tst_phot")
         self.switch_w[REF].border_title = 'ON'
@@ -109,6 +172,7 @@ class ZpTessApp(App[str]):
         self.progress_w[TEST] = self.query_one("#tst_ring")
         self.progress_w[REF].total = 75
         self.progress_w[TEST].total = 75
+      
     
     def clear_metadata(self, role):
         self.metadata_w[role].clear()
@@ -121,11 +185,21 @@ class ZpTessApp(App[str]):
 
     def update_progress(self, role, amount):
         self.progress_w[role].advance(amount)
-    
-    def action_quit(self):
-        self.controller.quit_event.set()
-        self.exit(return_code=2)
 
+    def update_graph(self, role, data):
+        self.graph_w[role].data = data
+
+    # ======================
+    # Textual event handlers
+    # ======================
+
+    def action_quit(self):
+        self.controller.quit()
+
+    def action_about(self):
+        self.push_screen(About(self.TITLE, 
+            version=__version__, 
+            description=ABOUT))
 
     @on(Switch.Changed, "#ref_phot")
     def ref_switch_pressed(self, message):

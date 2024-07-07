@@ -15,21 +15,25 @@ import logging
 # Third party imports
 # -------------------
 
-import asyncio
+
+from lica.sqlalchemy.asyncio.dbase import engine, AsyncSession
+from lica.textual.argparse import args_parser
+from lica.textual.logging import configure_log
 
 #--------------
 # local imports
 # -------------
 
-from zptess import __version__
-from zptess.utils.argsparse import args_parser
-from zptess.utils.logging import configure
-from zptess.tui.application import ZpTessApp
-from zptess.tui.controller import Controller
+from . import __version__
+
+from .tui.application import MyTextualApp
+from .tui.controller import Controller
 
 # ----------------
 # Module constants
 # ----------------
+
+DESCRIPTION = "TESS-W Zero Point Calibration tool"
 
 # -----------------------
 # Module global variables
@@ -42,25 +46,19 @@ log = logging.getLogger()
 # Auxiliary functions
 # -------------------
 
-async def bootstrap():
-    controller = Controller()
-    tui = ZpTessApp(controller)
-    controller.set_view(tui)
-    t1 = asyncio.create_task(tui.run_async())
-    t2 = asyncio.create_task(controller.wait())
-    await asyncio.gather(t1, t2)
-
 def main():
     '''The main entry point specified by pyproject.toml'''
     parser = args_parser(
         name = __name__,
         version = __version__,
-        description = "Example Textual App"
+        description = DESCRIPTION
     )
-   
     args = parser.parse_args(sys.argv[1:])
-    configure(args)
+    configure_log(args)
     try:
-        asyncio.run(bootstrap())
+        controller = Controller()
+        tui = MyTextualApp(controller, DESCRIPTION)
+        controller.set_view(tui)
+        tui.run()
     except KeyboardInterrupt:
         log.warn("Application quits by user request")

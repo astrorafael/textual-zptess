@@ -14,7 +14,6 @@ Footer {
 
 #ref_log {
 	background: darkblue;
-
 }
 
 #tst_log {
@@ -34,4 +33,7 @@ Switch {
     height: auto;
     width: auto;
     align: right bottom;
+}
+Sparkline {
+	height: 4;
 }

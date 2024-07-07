@@ -18,14 +18,15 @@ import asyncio
 # Third party imports
 # -------------------
 
+from lica.misc import measurements_session_id
+from lica.asyncio.photometer import REF, TEST, TESSW, label
+from lica.asyncio.photometer.builder import PhotometerBuilder
 
 #--------------
 # local imports
 # -------------
 
-from zptess.photometer import REF, TEST
-from zptess.photometer.tessw import Photometer
-from zptess.ring import RingBuffer 
+from .ring import RingBuffer 
 
 # ----------------
 # Module constants
@@ -53,34 +54,82 @@ class Controller:
         self.producer = [None, None]
         self.consumer = [None, None]
         self.ring = [None, None]
-        self.photometer[REF] = Photometer(role=REF, old_payload=True)
-        self.photometer[TEST] = Photometer(role=TEST, old_payload=False)
+        self.cur_mac = [None, None]
+
+        builder = PhotometerBuilder()
+        # Although we use TEST / REF roles, we always build TEST like Photometer objects
+        self.photometer[TEST] = builder.build(TESSW, TEST)
+        self.photometer[REF] =  builder.build(TESSW, REF)
+
         self.ring[REF] = RingBuffer(ring_buffer_size)
         self.ring[TEST] = RingBuffer(ring_buffer_size)
         self.quit_event =  None
 
+    # ----------------------------------------
+    # Public API to be used by the Textual TUI
+    # ----------------------------------------
+
     def set_view(self, view):
         self.view = view
 
-    async def wait(self):
-        self.quit_event = asyncio.Event() if self.quit_event is None else self.quit_event
-        await self.quit_event.wait()
-        raise  KeyboardInterrupt("User quits")
+    def quit(self):
+        self.view.exit(return_code=2)
 
-    async def receptor(self, role):
+
+    async def load(self):
+        '''Load configuration data from the database'''
+        log.info("loading configuration data")
+        async with self.Session() as session:
+            q = select(Config.value).where(Config.section == 'calibration', Config.prop == 'samples')
+            self._samples = int((await session.scalars(q)).one_or_none())
+          
+    async def get_info(self, role):
+        '''Get Photometer Info'''
+        log = logging.getLogger(label(role))
         try:
             info = await self.photometer[role].get_info()
-            self.view.clear_metadata(role)
-            self.view.update_metadata(role, info)
+        except asyncio.exceptions.TimeoutError:
+            line = f"Failed contacting {label(role)} photometer"
+            log.error(line)
+            self.view.append_log(role, line)
+            self.view.reset_switch(role)
         except Exception as e:
             log.error(e)
         else:
-            while True:
-                msg = await self.photometer[role].queue.get()
-                self.ring[role].append(msg)
-                line = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('seq')}] f={msg['freq']} Hz, tbox={msg['tamb']}, tsky={msg['tsky']}"
-                self.view.append_log(role, line)
-                self.view.update_progress(role, 1)
+            self.view.clear_metadata_table(role)
+            self.view.update_metadata_table(role, info)
+            async with self.Session() as session:
+                session.begin()
+                try:
+                    q = select(DbPhotometer).where(DbPhotometer.mac == info.get('mac'))
+                    dbphot = (await session.scalars(q)).one_or_none()
+                    if not dbphot:
+                        session.add(
+                            DbPhotometer(
+                                name= info.get('name'), 
+                                mac = info.get('mac'),
+                                sensor = info.get('sensor'),
+                                model = info.get('model'),
+                                firmware = info.get('firmware'),
+                                zero_point = info.get('zp'),
+                                freq_offset = info.get('freq_offset'),
+                            )
+                        )
+                    await session.commit()
+                except Exception as e:
+                    log.warn("Ignoring already saved photometer entry")
+                    await session.rollback()
+            self.cur_mac[role] = info.get('mac')
+
+    async def receive(self, role):
+        while True:
+            msg = await self.photometer[role].queue.get()
+            self.ring[role].append(msg)
+            line = f"{msg['tstamp'].strftime('%Y-%m-%d %H:%M:%S')} [{msg.get('seq')}] f={msg['freq']} Hz, tbox={msg['tamb']}, tsky={msg['tsky']}"
+            self.view.append_log(role, line)
+            self.view.update_progress(role, 1)
+            data = self.ring[role].frequencies()
+            self.view.update_graph(role, data)
 
     def cancel_readings(self, role):
         self.producer[role].cancel()
@@ -88,6 +137,7 @@ class Controller:
         self.view.append_log(role, "READINGS PAUSED")
 
     def start_readings(self, role):
-        self.consumer[role] = asyncio.create_task(self.receptor(role))
+        self.photometer[role].clear()
+        self.consumer[role] = asyncio.create_task(self.receive(role))
         self.producer[role] = asyncio.create_task(self.photometer[role].readings())
        

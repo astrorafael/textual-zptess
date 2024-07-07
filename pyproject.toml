@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "textual-zptess"
 dynamic = ["version"]
-description = "A package to collect measurements published by TESS instruments into a SQlite database"
+description = "TESS-W Calibration tool"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
@@ -37,7 +37,9 @@ dependencies = [
   #'exceptiongroups', # For Python < 3.11 when using TaskGroups
   #'asyncstdlib', # async counterparts such as aenumerate()
   # Textual TUI
-  'textual-dev'
+  'textual-dev',
+  # My own library of Python utilities
+  'lica@git+https://github.com/guaix-ucm/lica@main',
 ]
 
 [project.optional-dependencies]
@@ -53,7 +55,6 @@ Repository = "https://github.com/astrorafael/textual-zptess.git"
 
 zptess = "zptess.main:main"
 schema = "zptess.dbase.schema:main"
-phot = "zptess.photometer.test:main"
 
 # pyproject.toml
 # Automatically generates a _version-py file from with Git information

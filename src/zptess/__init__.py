@@ -10,12 +10,6 @@ from ._version import __version__
 # Module constants
 # ----------------
 
-
-# Photometer models
-TESSW = "TESS-W"
-TESSP = "TESS-P"
-TAS   = "TAS"
-
 SERIAL_PORT_PREFIX = "/dev/ttyUSB"
 
 # TESS-W data
