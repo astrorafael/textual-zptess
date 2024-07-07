@@ -18,7 +18,7 @@ from datetime import datetime
 # Third party libraries
 # ---------------------
 
-from sqlalchemy import String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import Table, Column, Integer, String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lica.sqlalchemy.asyncio.dbase import Model
@@ -68,14 +68,22 @@ class Photometer(Model):
     zero_point:     Mapped[float]
     freq_offset:    Mapped[float]
 
-    # This is not a real column, it s meant for the ORM
-    samples: Mapped[List['Samples']] = relationship(back_populates="photometer")
-
     def __repr__(self) -> str:
         return f"TESS(id={self.id!r}, name={self.name!r}, mac={self.mac!r})"
    
 
-class Samples(Model):
+# Samples per round
+# Due to the sliding window collect process, a sample may belong to several rounds
+# This part is not part of the ORM, as it uses the basic Table API
+SamplesRounds = Table(
+    "samples_rounds_t",
+    Model.metadata,
+    Column('round_id', ForeignKey('rounds_t.id'), nullable=False, primary_key=True),
+    Column('sample_id', ForeignKey('samples_t.id'), nullable=False, primary_key=True),
+)
+
+
+class Sample(Model):
     __tablename__ = "samples_t"
 
     id:         Mapped[int] = mapped_column(primary_key=True)
@@ -88,15 +96,39 @@ class Samples(Model):
     freq:       Mapped[float]
     temp_box:   Mapped[float]
 
+    # rounds per sample (at least 1...)
+    # This is not a real column, it s meant for the ORM
+    rounds: Mapped[List['Round']] = relationship(secondary=SamplesRounds, back_populates="samples")
+
     __table_args__ = (
         UniqueConstraint(
             tstamp,
             role),
         {})
- 
-
-    # This is not a real column, it s meant for the ORM
-    photometer: Mapped['Photometer'] = relationship(back_populates="samples")
 
     def __repr__(self) -> str:
         return f"Sample(id={self.id!r}, freq={self.freq!r}, mag={self.mag!r}, seq={self.seq!r}, wave={self.wave})"
+
+
+class Round(Model):
+    __tablename__ = "rounds_t"
+
+    id:         Mapped[int] = mapped_column(primary_key=True)
+    seq:        Mapped[int] = mapped_column(Integer) # Round number form 1..NRounds
+    role:       Mapped[str] = mapped_column(String(4))
+    session:    Mapped[int] = mapped_column(Integer)
+    freq:       Mapped[Optional[float]] # Average of Median method
+    central:    Mapped[Optional[str]] = mapped_column(String(6))  # ether 'mean' or 'median'
+    stddev:     Mapped[Optional[float]] # Standard deviation for frequency central estimate
+
+    # samples per round. Shoudl match the window size
+    # This is not a real column, it s meant for the ORM
+    samples: Mapped[List['Sample']] = relationship(secondary=SamplesRounds, back_populates="rounds")
+
+    __table_args__ = (
+        UniqueConstraint(
+            session,
+            seq,
+            role),
+        {})
+

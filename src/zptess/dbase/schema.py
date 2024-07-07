@@ -35,7 +35,7 @@ from lica.sqlalchemy.asyncio.dbase import url, engine, Model, AsyncSession
 # -------------
 
 from .. import __version__
-from .model import Photometer, Samples, Config
+from .model import Config
 
 # ----------------
 # Module constants
