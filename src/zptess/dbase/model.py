@@ -177,7 +177,7 @@ class Round(Model):
     role:       Mapped[RoleType] = mapped_column(RoleType)
     session:    Mapped[int] = mapped_column(Integer)
     freq:       Mapped[Optional[float]]         # Average of Median method
-    central:    Mapped[Optiona[CentralTendencyType]] = mapped_column(Optional[CentralTendencyType]) 
+    central:    Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True) 
     stddev:     Mapped[Optional[float]]         # Standard deviation for frequency central estimate
     mag:        Mapped[Optional[float]]         # magnitiude corresponding to central frequency and summing ficticious zero point 
     zp_fict:    Mapped[Optional[float]]         # Ficticious ZP to estimate instrumental magnitudes (=20.50)
@@ -213,9 +213,9 @@ class Summary(Model):
     offset:         Mapped[Optional[float]]                             # Additional offset that was summed to the computed zero_point
     upd_flag:       Mapped[Optional[bool]]                              # 1 => TESS-W ZP was updated, 0 => TESS-W ZP was not updated
     zero_point:         Mapped[Optional[float]]                         #  calibrated zero point
-    zero_point_method:  Mapped[Optional[str]]  = mapped_column(String(6))  #  either the 'mode' or 'median' of the different rounds
+    zero_point_method:  Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True)
     freq:               Mapped[Optional[float]]                            # final chosen frequency
-    freq_method:        Mapped[Optional[str]]  = mapped_column(String(6))  #  either the 'mode' or 'median' of the different rounds
+    freq_method:        Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True)
     mag:                Mapped[Optional[float]]                            #  final chosen magnitude uzing ficticious ZP
     filter:             Mapped[Optional[str]] = mapped_column(String(32))  #  Filter type (i.e. UV-IR/740)
     plug:               Mapped[Optional[str]] = mapped_column(String(16))  #  Plug type (i.e. USB-A)
