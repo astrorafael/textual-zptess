@@ -59,9 +59,11 @@ async def load_photometer(path, async_session: async_sessionmaker[AsyncSession])
             with open(path, newline='') as f:
                 reader = csv.DictReader(f, delimiter=';')
                 for row in reader:
-                    row['zero_point'] = 20.50 if not row['zero_point'] else row['zero_point']
-                    row['sensor'] = Sensor.TSL237 if not row['sensor'] else row['sensor']
-                    row['mac'] = None  if not row['mac'] else row['mac']
+                    row['mac'] = None if not row['mac'] else row['mac']
+                    row['sensor'] = None if not row['sensor'] else row['sensor']
+                    row['firmware'] = None if not row['firmware'] else row['firmware']
+                    row['filter'] = None if not row['filter'] else row['filter']
+                    row['collector'] = None if not row['collector'] else row['collector']
                     if row['mac']:
                         phot = Photometer(**row)
                         session.add(phot)

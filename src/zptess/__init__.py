@@ -18,6 +18,10 @@ class CentralTendency(enum.Enum):
     MODE = "mode"
     MEAN = "mean"
 
+class Calibration(enum.Enum):
+    MANUAL = "MANUAL"
+    AUTO = "AUTO"
+
 
 SERIAL_PORT_PREFIX = "/dev/ttyUSB"
 

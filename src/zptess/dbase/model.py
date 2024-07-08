@@ -27,7 +27,7 @@ from lica.sqlalchemy.asyncio.dbase import Model
 from lica.asyncio.photometer import Model as PhotModel, Role, Sensor
 
 
-from .. import CentralTendency
+from .. import CentralTendency, Calibration
 
 # ================
 # Module constants
@@ -85,6 +85,15 @@ CentralTendencyType: Enum = Enum(
     values_callable = lambda x: [e.value for e in x],
 )
 
+CalibrationType: Enum = Enum(
+    Calibration,
+    name="calibration_type",
+    create_constraint=False,
+    metadata=Model.metadata,
+    validate_strings=True,
+    values_callable = lambda x: [e.value for e in x],
+)
+
 # --------
 # Entities
 # --------
@@ -113,11 +122,15 @@ class Photometer(Model):
     id:             Mapped[int] = mapped_column(primary_key=True)
     name:           Mapped[str] = mapped_column(String(10))
     mac:            Mapped[str] = mapped_column(String(17))
-    sensor:         Mapped[SensorType] = mapped_column(SensorType)
+    sensor:         Mapped[SensorType] = mapped_column(SensorType, default=Sensor.TSL237)
     model:          Mapped[PhotModelType] = mapped_column(PhotModelType)
-    firmware:       Mapped[str] = mapped_column(String(17), nullable=True)
-    zero_point:     Mapped[float] = mapped_column(Float)
-    freq_offset:    Mapped[float] = mapped_column(Float)
+    firmware:       Mapped[Optional[str]] = mapped_column(String(17))
+    filter:             Mapped[Optional[str]] = mapped_column(String(32), default="UV/IR-740")
+    plug:               Mapped[Optional[str]] = mapped_column(String(16), default="USB-A")
+    box:                Mapped[Optional[str]] = mapped_column(String(16), default="FSH714")
+    collector:          Mapped[Optional[str]] = mapped_column(String(16), default="standard")  #  Collector model
+  
+  
 
     # This is not a real column, it s meant for the ORM
     samples: Mapped[List['Sample']] = relationship(back_populates="photometer")
@@ -129,8 +142,7 @@ class Photometer(Model):
         UniqueConstraint(
             name,
             mac,
-            zero_point,
-            freq_offset),
+            ),
         {})
 
     def __repr__(self) -> str:
@@ -213,23 +225,22 @@ class Summary(Model):
     phot_id:        Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
     session:        Mapped[datetime] = mapped_column(DateTime)                # calibration session identifier
     role:           Mapped[RoleType] = mapped_column(RoleType)
-    calibration:    Mapped[Optional[str]] = mapped_column(String(6))    # Either 'MANUAL' or 'AUTO'
+    calibration:    Mapped[CalibrationType] = mapped_column(CalibrationType, nullable=True) 
     calversion:     Mapped[Optional[str]] = mapped_column(String(64))   # calibration software version
     prev_zp:        Mapped[Optional[float]]                             # previous ZP before calibration
     author:         Mapped[Optional[str]]                               # who run the calibration
     nrounds:        Mapped[Optional[int]]                               # Number of rounds passed
     offset:         Mapped[Optional[float]]                             # Additional offset that was summed to the computed zero_point
     upd_flag:       Mapped[Optional[bool]]                              # 1 => TESS-W ZP was updated, 0 => TESS-W ZP was not updated
+    prev_zp:        Mapped[Optional[float]]
+    prev_freq_offset:   Mapped[Optional[float]]
     zero_point:         Mapped[Optional[float]]                         #  calibrated zero point
     zero_point_method:  Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True)
     freq:               Mapped[Optional[float]]                            # final chosen frequency
     freq_method:        Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True)
-    mag:                Mapped[Optional[float]]                            #  final chosen magnitude uzing ficticious ZP
-    filter:             Mapped[Optional[str]] = mapped_column(String(32))  #  Filter type (i.e. UV-IR/740)
-    plug:               Mapped[Optional[str]] = mapped_column(String(16))  #  Plug type (i.e. USB-A)
-    box:                Mapped[Optional[str]] = mapped_column(String(16))  #  Box model (i.e. FSH714)
-    collector:          Mapped[Optional[str]] = mapped_column(String(16))  #  Collector model
-    comment:            Mapped[Optional[str]] = mapped_column(String(255)) #  Additional comment for the callibration process
+    mag:                Mapped[Optional[float]]
+    comment:            Mapped[Optional[str]] = mapped_column(String(255)) #  Additional comment for the calibration process                            #  final chosen magnitude uzing ficticious ZP
+    
 
     # This is not a real column, it s meant for the ORM
     photometer: Mapped['Photometer'] = relationship(back_populates="calibrations")
