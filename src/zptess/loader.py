@@ -90,9 +90,12 @@ async def load_summary(path, async_session: async_sessionmaker[AsyncSession]) ->
                     for key in ('zero_point','freq', 'zero_point_method', 'freq_method', 'mag', 'nrounds', 'prev_zp'):
                         row[key] = None if not row[key] else row[key]
                     q = select(Photometer).where(Photometer.mac==mac, Photometer.name==name)
-                    phot = (await session.scalars(q)).one()
                     summary = Summary(**row)
-                    summary.photometer = phot
+                    phot = (await session.scalars(q)).one_or_none()
+                    if phot is not None:
+                        summary.photometer = phot
+                    else:
+                        log.warn("photometer mot found by name %s, mac %s")
                     session.add(summary)
 
 
