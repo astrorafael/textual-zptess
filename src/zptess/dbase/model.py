@@ -146,7 +146,7 @@ class Sample(Model):
     phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
     tstamp:     Mapped[datetime] = mapped_column(DateTime)
     role:       Mapped[RoleType] = mapped_column(RoleType)
-    session:    Mapped[int]
+    session:    Mapped[int] = mapped_column(Integer)
     seq:        Mapped[int]
     mag:        Mapped[float]
     freq:       Mapped[float]
@@ -202,7 +202,6 @@ class Summary(Model):
 
     id:             Mapped[int] = mapped_column(primary_key=True)
     phot_id:        Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
-
     session:        Mapped[int] = mapped_column(Integer)                # calibration session identifier
     role:           Mapped[RoleType] = mapped_column(RoleType)
     calibration:    Mapped[Optional[str]] = mapped_column(String(6))    # Either 'MANUAL' or 'AUTO'
