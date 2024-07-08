@@ -115,7 +115,7 @@ class Photometer(Model):
     mac:            Mapped[str] = mapped_column(String(17))
     sensor:         Mapped[SensorType] = mapped_column(SensorType)
     model:          Mapped[PhotModelType] = mapped_column(PhotModelType)
-    firmware:       Mapped[str] = mapped_column(String(17))
+    firmware:       Mapped[str] = mapped_column(String(17), nullable=True)
     zero_point:     Mapped[float] = mapped_column(Float)
     freq_offset:    Mapped[float] = mapped_column(Float)
 
