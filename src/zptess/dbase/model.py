@@ -227,10 +227,9 @@ class Summary(Model):
     role:           Mapped[RoleType] = mapped_column(RoleType)
     calibration:    Mapped[CalibrationType] = mapped_column(CalibrationType, nullable=True) 
     calversion:     Mapped[Optional[str]] = mapped_column(String(64))   # calibration software version
-    prev_zp:        Mapped[Optional[float]]                             # previous ZP before calibration
     author:         Mapped[Optional[str]]                               # who run the calibration
     nrounds:        Mapped[Optional[int]]                               # Number of rounds passed
-    offset:         Mapped[Optional[float]]                             # Additional offset that was summed to the computed zero_point
+    zp_offset:      Mapped[Optional[float]]                             # Additional offset that was summed to the computed zero_point
     upd_flag:       Mapped[Optional[bool]]                              # 1 => TESS-W ZP was updated, 0 => TESS-W ZP was not updated
     prev_zp:        Mapped[Optional[float]]
     prev_freq_offset:   Mapped[Optional[float]]

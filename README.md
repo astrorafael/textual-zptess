@@ -31,7 +31,8 @@ If you want to process something in the background you will need to creat a new 
 - Summary
 
 ```SQL
-	SELECT DISTINCT name,mac,sensor,model,firmware,filter,plug,box,collector
+	SELECT DISTINCT name,mac,session,role,calibration,calversion,author,nrounds,offset as zp_offset,
+	upd_flag,prev_zp,zero_point,zero_point_method,freq,freq_method,mag,comment
 	FROM summary_t
 	ORDER BY name;
 ```

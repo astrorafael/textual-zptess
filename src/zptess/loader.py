@@ -13,11 +13,14 @@ import csv
 import logging
 import argparse
 import asyncio
+import datetime
 
 # -------------------
 # Third party imports
 # -------------------
 
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -32,7 +35,7 @@ from lica.validators import vfile
 # -------------
 
 from zptess import __version__
-from zptess.dbase.model import Config, Round, Photometer, Sample
+from zptess.dbase.model import Config, Round, Photometer, Sample, Summary
 
 # ----------------
 # Module constants
@@ -77,6 +80,20 @@ async def load_summary(path, async_session: async_sessionmaker[AsyncSession]) ->
      async with async_session() as session:
         async with session.begin():
             log.info("loading summary from %s", path)
+            with open(path, newline='') as f:
+                reader = csv.DictReader(f, delimiter=';')
+                for row in reader:
+                    mac = row['mac']; name = row['name']
+                    del row['mac']; del row['name']
+                    row['session'] = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
+                    row['upd_flag'] = True if row['upd_flag'] == '1' else False
+                    for key in ('zero_point','freq', 'zero_point_method', 'freq_method', 'mag', 'nrounds', 'prev_zp'):
+                        row[key] = None if not row[key] else row[key]
+                    q = select(Photometer).where(Photometer.mac==mac, Photometer.name==name)
+                    phot = (await session.scalars(q)).one()
+                    summary = Summary(**row)
+                    summary.photometer = phot
+                    session.add(summary)
 
 
 # --------------
