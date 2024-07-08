@@ -19,7 +19,7 @@ from datetime import datetime
 # Third party libraries
 # ===============# # -
 
-from sqlalchemy import Enum, Table, Column, Integer, String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import Enum, Table, Column, Integer, Float, String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lica.sqlalchemy.asyncio.dbase import Model
@@ -116,13 +116,22 @@ class Photometer(Model):
     sensor:         Mapped[SensorType] = mapped_column(SensorType)
     model:          Mapped[PhotModelType] = mapped_column(PhotModelType)
     firmware:       Mapped[str] = mapped_column(String(17))
-    zero_point:     Mapped[float]
-    freq_offset:    Mapped[float]
+    zero_point:     Mapped[float] = mapped_column(Float)
+    freq_offset:    Mapped[float] = mapped_column(Float)
 
     # This is not a real column, it s meant for the ORM
     samples: Mapped[List['Sample']] = relationship(back_populates="photometer")
     # This is not a real column, it s meant for the ORM
     calibrations: Mapped[List['Summary']] = relationship(back_populates="photometer")
+
+
+    __table_args__ = (
+        UniqueConstraint(
+            name,
+            mac,
+            zero_point,
+            freq_offset),
+        {})
 
     def __repr__(self) -> str:
         return f"TESS(id={self.id!r}, name={self.name!r}, mac={self.mac!r})"
@@ -146,7 +155,7 @@ class Sample(Model):
     phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
     tstamp:     Mapped[datetime] = mapped_column(DateTime)
     role:       Mapped[RoleType] = mapped_column(RoleType)
-    session:    Mapped[int] = mapped_column(Integer)
+    session:    Mapped[datetime] = mapped_column(DateTime)
     seq:        Mapped[int]
     mag:        Mapped[float]
     freq:       Mapped[float]
@@ -175,7 +184,7 @@ class Round(Model):
     id:         Mapped[int] = mapped_column(primary_key=True)
     seq:        Mapped[int] = mapped_column('round', Integer) # Round number form 1..NRounds
     role:       Mapped[RoleType] = mapped_column(RoleType)
-    session:    Mapped[int] = mapped_column(Integer)
+    session:    Mapped[datetime] = mapped_column(DateTime)
     freq:       Mapped[Optional[float]]         # Average of Median method
     central:    Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True) 
     stddev:     Mapped[Optional[float]]         # Standard deviation for frequency central estimate
@@ -202,7 +211,7 @@ class Summary(Model):
 
     id:             Mapped[int] = mapped_column(primary_key=True)
     phot_id:        Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
-    session:        Mapped[int] = mapped_column(Integer)                # calibration session identifier
+    session:        Mapped[datetime] = mapped_column(DateTime)                # calibration session identifier
     role:           Mapped[RoleType] = mapped_column(RoleType)
     calibration:    Mapped[Optional[str]] = mapped_column(String(6))    # Either 'MANUAL' or 'AUTO'
     calversion:     Mapped[Optional[str]] = mapped_column(String(64))   # calibration software version
