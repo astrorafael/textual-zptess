@@ -19,19 +19,20 @@ import statistics
 # Textual imports
 # ---------------
 
+from lica.asyncio.photometer import Model, Role
+from lica.textual.widgets.about import About
+
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static, Switch, ProgressBar, Sparkline, Rule
 from textual.widgets import  TabbedContent, TabPane
-
 from textual.containers import Horizontal, Vertical
 
 #--------------
 # local imports
 # -------------
 
-from lica.asyncio.photometer import REF, TEST, label
-from lica.textual.widgets.about import About
+from .. import __version__
 
 # ----------------
 # Module constants
@@ -152,26 +153,26 @@ class MyTextualApp(App[str]):
             table.fixed_columns = 2
             table.show_cursor = False
         
-        self.log_w[REF] = self.query_one("#ref_log")
-        self.log_w[TEST] = self.query_one("#tst_log")
-        self.log_w[REF].border_title = f"{label(REF)} LOG"
-        self.log_w[TEST].border_title = f"{label(TEST)} LOG"
+        self.log_w[Role.REF] = self.query_one("#ref_log")
+        self.log_w[Role.TEST] = self.query_one("#tst_log")
+        self.log_w[Role.REF].border_title = f"{Role.REF} LOG"
+        self.log_w[Role.TEST].border_title = f"{Role.TEST} LOG"
 
-        self.graph_w[REF] = self.query_one("#ref_graph")
-        self.graph_w[TEST] = self.query_one("#tst_graph")
-        self.graph_w[REF].border_title = f"{label(REF)} LOG"
-        self.graph_w[TEST].border_title = f"{label(TEST)} LOG"
+        self.graph_w[Role.REF] = self.query_one("#ref_graph")
+        self.graph_w[Role.TEST] = self.query_one("#tst_graph")
+        self.graph_w[Role.REF].border_title = f"{Role.REF} LOG"
+        self.graph_w[Role.TEST].border_title = f"{Role.TEST} LOG"
         
-        self.switch_w[REF] = self.query_one("#ref_phot")
-        self.switch_w[TEST] = self.query_one("#tst_phot")
-        self.switch_w[REF].border_title = 'ON'
-        self.switch_w[TEST].border_title = 'ON'
-        self.metadata_w[REF] =  self.query_one("#ref_metadata")
-        self.metadata_w[TEST] = self.query_one("#tst_metadata")
-        self.progress_w[REF] =  self.query_one("#ref_ring")
-        self.progress_w[TEST] = self.query_one("#tst_ring")
-        self.progress_w[REF].total = 75
-        self.progress_w[TEST].total = 75
+        self.switch_w[Role.REF] = self.query_one("#ref_phot")
+        self.switch_w[Role.TEST] = self.query_one("#tst_phot")
+        self.switch_w[Role.REF].border_title = 'ON'
+        self.switch_w[Role.TEST].border_title = 'ON'
+        self.metadata_w[Role.REF] =  self.query_one("#ref_metadata")
+        self.metadata_w[Role.TEST] = self.query_one("#tst_metadata")
+        self.progress_w[Role.REF] =  self.query_one("#ref_ring")
+        self.progress_w[Role.TEST] = self.query_one("#tst_ring")
+        self.progress_w[Role.REF].total = 75
+        self.progress_w[Role.TEST].total = 75
       
     
     def clear_metadata(self, role):
@@ -204,13 +205,13 @@ class MyTextualApp(App[str]):
     @on(Switch.Changed, "#ref_phot")
     def ref_switch_pressed(self, message):
         if message.control.value:
-            self.controller.start_readings(REF)
+            self.controller.start_readings(Role.REF)
         else:
-            self.controller.cancel_readings(REF)
+            self.controller.cancel_readings(Role.REF)
 
     @on(Switch.Changed, "#tst_phot")
     def tst_switch_pressed(self, message):
         if message.control.value:
-            self.controller.start_readings(TEST)
+            self.controller.start_readings(Role.TEST)
         else:
-            self.controller.cancel_readings(TEST)
+            self.controller.cancel_readings(Role.TEST)

@@ -19,14 +19,15 @@ import asyncio
 # -------------------
 
 from lica.misc import measurements_session_id
-from lica.asyncio.photometer import REF, TEST, TESSW, label
+from lica.asyncio.photometer import Role, Model
 from lica.asyncio.photometer.builder import PhotometerBuilder
+from lica.sqlalchemy.asyncio.dbase import engine
 
 #--------------
 # local imports
 # -------------
 
-from .ring import RingBuffer 
+from ..ring import RingBuffer 
 
 # ----------------
 # Module constants
@@ -56,13 +57,13 @@ class Controller:
         self.ring = [None, None]
         self.cur_mac = [None, None]
 
-        builder = PhotometerBuilder()
-        # Although we use TEST / REF roles, we always build TEST like Photometer objects
-        self.photometer[TEST] = builder.build(TESSW, TEST)
-        self.photometer[REF] =  builder.build(TESSW, REF)
+        builder = PhotometerBuilder(engine) # For the reference photometer using database info
 
-        self.ring[REF] = RingBuffer(ring_buffer_size)
-        self.ring[TEST] = RingBuffer(ring_buffer_size)
+        self.photometer[Role.TEST] = builder.build(Model.TESSW, Role.TEST)
+        self.photometer[Role.REF] =  builder.build(Model.TESSW, Role.REF)
+
+        self.ring[Role.REF] = RingBuffer(ring_buffer_size)
+        self.ring[Role.TEST] = RingBuffer(ring_buffer_size)
         self.quit_event =  None
 
     # ----------------------------------------
@@ -85,11 +86,11 @@ class Controller:
           
     async def get_info(self, role):
         '''Get Photometer Info'''
-        log = logging.getLogger(label(role))
+        log = logging.getLogger(str(role))
         try:
             info = await self.photometer[role].get_info()
         except asyncio.exceptions.TimeoutError:
-            line = f"Failed contacting {label(role)} photometer"
+            line = f"Failed contacting {str(role)} photometer"
             log.error(line)
             self.view.append_log(role, line)
             self.view.reset_switch(role)
