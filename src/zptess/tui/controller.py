@@ -86,11 +86,11 @@ class Controller:
           
     async def get_info(self, role):
         '''Get Photometer Info'''
-        log = logging.getLogger(str(role))
+        log = logging.getLogger(role.tag())
         try:
             info = await self.photometer[role].get_info()
         except asyncio.exceptions.TimeoutError:
-            line = f"Failed contacting {str(role)} photometer"
+            line = f"Failed contacting {role.tag()} photometer"
             log.error(line)
             self.view.append_log(role, line)
             self.view.reset_switch(role)

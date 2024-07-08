@@ -1,42 +1,93 @@
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# ----------------------------------------------------------------------
 # Copyright (c) 2024 Rafael Gonzalez.
 #
 # See the LICENSE file for details
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# ----------------------------------------------------------------------
 
 
-## # # # # # # # # # 
+#--------------------
 # System wide imports
-# # # # # # # # # # -
+# -------------------
 
+import enum
 import logging
 
 from typing import Optional, List
 from datetime import datetime
 
-# # # # # # # # # # # -
+# ===============# # -
 # Third party libraries
-# # # # # # # # # # # -
+# ===============# # -
 
-from sqlalchemy import Table, Column, Integer, String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import Enum, Table, Column, Integer, String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lica.sqlalchemy.asyncio.dbase import Model
 
-# # # # # # # # # 
-# Module constants
-# # # # # # # # # 
+from lica.asyncio.photometer import Model as PhotModel, Role, Sensor
 
-# # # # # # # # # # # # -
+
+from .. import CentralTendency
+
+# ================
+# Module constants
+# ================
+
+# =======================
 # Module global variables
-# # # # # # # # # # # # -
+# =======================
 
 # get the module logger
 log = logging.getLogger(__name__)
 
-# # # # # # # # # # # # # # # # # -
+# =================================
 # Data Model, declarative ORM style
-# # # # # # # # # # # # # # # # # -
+# =================================
+
+# ---------------------------------------------
+# Additional conveniente types for enumerations
+# ---------------------------------------------
+
+RoleType: Enum = Enum(
+    Role,
+    name="role_type",
+    create_constraint=False,
+    metadata=Model.metadata,
+    validate_strings=True,
+    values_callable = lambda x: [e.name.lower() for e in x],
+)
+
+PhotModelType: Enum = Enum(
+    PhotModel,
+    name="model_type",
+    create_constraint=False,
+    metadata=Model.metadata,
+    validate_strings=True,
+    values_callable = lambda x: [e.value for e in x],
+)
+
+
+SensorType: Enum = Enum(
+    Sensor,
+    name="sensor_type",
+    create_constraint=False,
+    metadata=Model.metadata,
+    validate_strings=True,
+    values_callable = lambda x: [e.value for e in x],
+)
+
+CentralTendencyType: Enum = Enum(
+    CentralTendency,
+    name="central_type",
+    create_constraint=False,
+    metadata=Model.metadata,
+    validate_strings=True,
+    values_callable = lambda x: [e.value for e in x],
+)
+
+# --------
+# Entities
+# --------
 
 class Config(Model):
 
@@ -62,8 +113,8 @@ class Photometer(Model):
     id:             Mapped[int] = mapped_column(primary_key=True)
     name:           Mapped[str] = mapped_column(String(10))
     mac:            Mapped[str] = mapped_column(String(17))
-    sensor:         Mapped[str] = mapped_column(String(12)) # Sensor model: TSL237, S9705-01DT
-    model:          Mapped[str] = mapped_column(String(8))
+    sensor:         Mapped[SensorType] = mapped_column(SensorType)
+    model:          Mapped[PhotModelType] = mapped_column(PhotModelType)
     firmware:       Mapped[str] = mapped_column(String(17))
     zero_point:     Mapped[float]
     freq_offset:    Mapped[float]
@@ -94,7 +145,7 @@ class Sample(Model):
     id:         Mapped[int] = mapped_column(primary_key=True)
     phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
     tstamp:     Mapped[datetime] = mapped_column(DateTime)
-    role:       Mapped[str] = mapped_column(String(4))
+    role:       Mapped[RoleType] = mapped_column(RoleType)
     session:    Mapped[int]
     seq:        Mapped[int]
     mag:        Mapped[float]
@@ -115,7 +166,7 @@ class Sample(Model):
         {})
 
     def __repr__(self) -> str:
-        return f"Sample(id={self.id!r}, freq={self.freq!r}, mag={self.mag!r}, seq={self.seq!r})"
+        return f"Sample(id={self.id!r}, role={self.role!r} freq={self.freq!r}, mag={self.mag!r}, seq={self.seq!r})"
 
 
 class Round(Model):
@@ -123,10 +174,10 @@ class Round(Model):
 
     id:         Mapped[int] = mapped_column(primary_key=True)
     seq:        Mapped[int] = mapped_column('round', Integer) # Round number form 1..NRounds
-    role:       Mapped[str] = mapped_column(String(4))
+    role:       Mapped[RoleType] = mapped_column(RoleType)
     session:    Mapped[int] = mapped_column(Integer)
     freq:       Mapped[Optional[float]]         # Average of Median method
-    central:    Mapped[Optional[str]] = mapped_column(String(6))  # ether 'mean' or 'median'
+    central:    Mapped[Optiona[CentralTendencyType]] = mapped_column(Optional[CentralTendencyType]) 
     stddev:     Mapped[Optional[float]]         # Standard deviation for frequency central estimate
     mag:        Mapped[Optional[float]]         # magnitiude corresponding to central frequency and summing ficticious zero point 
     zp_fict:    Mapped[Optional[float]]         # Ficticious ZP to estimate instrumental magnitudes (=20.50)
@@ -153,7 +204,7 @@ class Summary(Model):
     phot_id:        Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
 
     session:        Mapped[int] = mapped_column(Integer)                # calibration session identifier
-    role:           Mapped[str] = mapped_column(String(4))              # either 'test' or 'ref'
+    role:           Mapped[RoleType] = mapped_column(RoleType)
     calibration:    Mapped[Optional[str]] = mapped_column(String(6))    # Either 'MANUAL' or 'AUTO'
     calversion:     Mapped[Optional[str]] = mapped_column(String(64))   # calibration software version
     prev_zp:        Mapped[Optional[float]]                             # previous ZP before calibration

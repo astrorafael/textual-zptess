@@ -4,11 +4,20 @@
 # See the LICENSE file for details
 # ----------------------------------------------------------------------
 
+import enum
+
 from ._version import __version__
 
 # ----------------
 # Module constants
 # ----------------
+
+
+class CentralTendency(enum.Enum):
+    MEDIAN = "median"
+    MODE = "mode"
+    MEAN = "mean"
+
 
 SERIAL_PORT_PREFIX = "/dev/ttyUSB"
 
