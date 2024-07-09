@@ -55,7 +55,7 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 # Auxiliary functions
 # -------------------
 
-async def load_config(path, async_session: async_sessionmaker[AsyncSession]) -> None:
+async def load_config(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
         async with session.begin():
             log.info("loading config from %s", path)
@@ -65,7 +65,7 @@ async def load_config(path, async_session: async_sessionmaker[AsyncSession]) -> 
                     session.add(Config(**row))
 
 
-async def load_photometer(path, async_session: async_sessionmaker[AsyncSession]) -> None:
+async def load_photometer(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
         async with session.begin():
             log.info("loading photometer from %s", path)

@@ -41,3 +41,12 @@ If you want to process something in the background you will need to creat a new 
 	FROM summary_t
 	ORDER BY name;
 ```
+
+- Rounds
+```SQL
+	SELECT DISTINCT s.session, s.name, s.mac, s.role, r.round, r.central, r.freq, r.stddev, r.mag, r.zp_fict, r.zero_point, 
+	r.nsamples, r.duration
+	FROM rounds_t AS r
+	JOIN summary_t AS s ON s.session = r.session
+	ORDER BY s.session, r.round;
+```
