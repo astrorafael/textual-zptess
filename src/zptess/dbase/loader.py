@@ -55,6 +55,16 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 # Auxiliary functions
 # -------------------
 
+async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+     async with async_session() as session:
+        async with session.begin():
+            log.info("loading rounds from %s", path)
+            with open(path, newline='') as f:
+                reader = csv.DictReader(f, delimiter=';')
+                for row in reader:
+                    log.info("To be continued")
+
+
 async def load_config(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
         async with session.begin():
@@ -121,6 +131,8 @@ async def loader(args) -> None:
             await load_summary(args.input_file, AsyncSession)
         elif  args.command == 'config':
             await load_config(args.input_file, AsyncSession)
+        elif  args.command == 'rounds':
+            await load_rounds(args.input_file, AsyncSession)
     await engine.dispose()
 
 
@@ -131,10 +143,12 @@ def add_args(parser):
     parser_config = subparser.add_parser('config', help='Load config CSV')
     parser_phot = subparser.add_parser('photometer', help='Load photometer CSV')
     parser_summary = subparser.add_parser('summary', help='Load summary CSV')
+    parser_rounds = subparser.add_parser('rounds', help='Load rounds CSV')
 
     parser_config.add_argument('-i', '--input-file', type=vfile, required=True, help='Input CSV file')
     parser_phot.add_argument('-i', '--input-file', type=vfile, required=True, help='Input CSV file')
     parser_summary.add_argument('-i', '--input-file', type=vfile, required=True, help='Input CSV file')
+    parser_rounds.add_argument('-i', '--input-file', type=vfile, required=True, help='Input CSV file')
 
 def main():
     '''The main entry point specified by pyproject.toml'''
