@@ -163,3 +163,4 @@ cython_debug/
 *.db
 src/zptess/_version.py
 test*.py
+*.csv

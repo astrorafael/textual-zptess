@@ -26,6 +26,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Atmospheric Science",
 ]
 dependencies = [
+  'typing-extensions', # Self for Python < 3.11
   'python-decouple',  # Get info from enviromental variables
   # Async Database stuff
   'SQLAlchemy[asyncio]',
@@ -55,7 +56,7 @@ Repository = "https://github.com/astrorafael/textual-zptess.git"
 
 zptess = "zptess.main:main"
 schema = "zptess.dbase.schema:main"
-loader = "zptess.loader:main"
+loader = "zptess.dbase.loader:main"
 
 # pyproject.toml
 # Automatically generates a _version-py file from with Git information

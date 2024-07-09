@@ -21,7 +21,7 @@ import datetime
 
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession as AsyncSessionClass
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from lica.sqlalchemy.asyncio.dbase import engine, AsyncSession
@@ -34,26 +34,36 @@ from lica.validators import vfile
 # local imports
 # -------------
 
-from zptess import __version__
-from zptess.dbase.model import Config, Round, Photometer, Sample, Summary
+from .. import __version__
+from .model import Config, Round, Photometer, Sample, Summary
 
 # ----------------
 # Module constants
 # ----------------
 
-DESCRIPTION = "TESS-W Zero Point Calibration tool"
+DESCRIPTION = "TESS-W Zero Database Migration tool"
 
 # -----------------------
 # Module global variables
 # -----------------------
 
 # get the root logger
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 # -------------------
 # Auxiliary functions
 # -------------------
+
+async def load_config(path, async_session: async_sessionmaker[AsyncSession]) -> None:
+     async with async_session() as session:
+        async with session.begin():
+            log.info("loading config from %s", path)
+            with open(path, newline='') as f:
+                reader = csv.DictReader(f, delimiter=';')
+                for row in reader:
+                    session.add(Config(**row))
+
 
 async def load_photometer(path, async_session: async_sessionmaker[AsyncSession]) -> None:
      async with async_session() as session:
@@ -76,7 +86,7 @@ async def load_photometer(path, async_session: async_sessionmaker[AsyncSession])
             
 
 
-async def load_summary(path, async_session: async_sessionmaker[AsyncSession]) -> None:
+async def load_summary(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
         async with session.begin():
             log.info("loading summary from %s", path)
@@ -109,6 +119,8 @@ async def loader(args) -> None:
             await load_photometer(args.input_file, AsyncSession)
         elif  args.command == 'summary':
             await load_summary(args.input_file, AsyncSession)
+        elif  args.command == 'config':
+            await load_config(args.input_file, AsyncSession)
     await engine.dispose()
 
 
@@ -116,10 +128,11 @@ def add_args(parser):
 
     subparser = parser.add_subparsers(dest='command')
 
+    parser_config = subparser.add_parser('config', help='Load config CSV')
     parser_phot = subparser.add_parser('photometer', help='Load photometer CSV')
     parser_summary = subparser.add_parser('summary', help='Load summary CSV')
 
-    
+    parser_config.add_argument('-i', '--input-file', type=vfile, required=True, help='Input CSV file')
     parser_phot.add_argument('-i', '--input-file', type=vfile, required=True, help='Input CSV file')
     parser_summary.add_argument('-i', '--input-file', type=vfile, required=True, help='Input CSV file')
 

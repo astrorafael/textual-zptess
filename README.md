@@ -19,7 +19,12 @@ Textual widgets have an internal message queue that processes events sequentiall
 If you want to process something in the background you will need to creat a new asyncio Task. Note that you can’t await that task, since that will also prevent the handler from returning.
 
 ## Migration SQL
-
+- Config
+```SQL
+	SELECT section,property as prop,value
+	FROM config_t
+	ORDER BY section,prop;
+```
 - Photometers
 
 ```SQL

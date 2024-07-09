@@ -20,14 +20,10 @@ from datetime import datetime
 # SQLAlchemy imports
 # -------------------
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.asyncio import async_sessionmaker
-
 from lica.textual.argparse import args_parser
 from lica.textual.logging import configure_log
-from lica.textual.logging import configure_log
 
-from lica.sqlalchemy.asyncio.dbase import url, engine, Model, AsyncSession
+from lica.sqlalchemy.asyncio.dbase import url, engine, Model
 
 
 #--------------
@@ -35,7 +31,8 @@ from lica.sqlalchemy.asyncio.dbase import url, engine, Model, AsyncSession
 # -------------
 
 from .. import __version__
-from .model import Config, Sample
+# We must pull one model to make it work
+from .model import Config
 
 # ----------------
 # Module constants
@@ -53,20 +50,10 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 # Auxiliary functions
 # -------------------
 
-async def populate(async_session: async_sessionmaker[AsyncSession]) -> None:
-    async with async_session() as session:
-        async with session.begin():
-            session.add(Config(section="database", prop="uuid", value=str(uuid.uuid4())))
-            session.add(Config(section="calibration", prop="author", value="Rafael González"))
-            session.add(Config(section="calibration", prop="samples", value=5))
-            session.add(Config(section="calibration", prop="wavelength", value=350))
-
-
 async def schema() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Model.metadata.drop_all)
         await conn.run_sync(Model.metadata.create_all)
-        await populate(AsyncSession)
     await engine.dispose()
 
 
@@ -79,9 +66,8 @@ def main():
     )
     args = parser.parse_args(sys.argv[1:])
     configure_log(args)
-    log.info("Creating/Opening schema %s", url)
+    log.info("Creating new schema for %s", url)
     asyncio.run(schema())
-
 
 if __name__ == '__main__':
     main()

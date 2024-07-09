@@ -98,22 +98,17 @@ CalibrationType: Enum = Enum(
 # Entities
 # --------
 
+
 class Config(Model):
 
     __tablename__ = "config_t"
 
-    section:   Mapped[str] = mapped_column(String(32))
-    prop:      Mapped[str] = mapped_column('property', String(255))
+    section:   Mapped[str] = mapped_column(String(32), primary_key=True)
+    prop:      Mapped[str] = mapped_column('property', String(255), primary_key=True)
     value:     Mapped[str] = mapped_column(String(255))
 
-    __table_args__ = (
-        PrimaryKeyConstraint(
-            section,
-            prop),
-        {})
-
     def __repr__(self) -> str:
-        return f"TESS(id={self.id!r}, nname={self.name!r}, mac={self.mac!r})"
+        return f"Config(section={self.section!r}, prop={self.prop!r}, value={self.value!r})"
 
 
 class Photometer(Model):
