@@ -143,9 +143,12 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
             with open(path, newline='') as f:
                 reader = csv.DictReader(f, delimiter=';')
                 for row in reader:
-                    log.info("To be continued")
-
-
+                    row['session'] = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
+                    row['tstamp'] = datetime.datetime.strptime(row['tstamp'], "%Y-%m-%dT%H:%M:%S.%f")
+                    row['temp_box'] = float(row['temp_box']) if row['temp_box'] else None
+                    row['freq'] = float(row['freq'])
+                    row['seq'] = int(row['seq']) if row['seq'] else None
+                    session.add(Sample(**row))
 # --------------
 # main functions
 # --------------
@@ -156,6 +159,7 @@ TABLE = {
     'photometer': load_photometer,
     'summary': load_summary,
     'rounds': load_rounds,
+    'samples': load_samples,
 }
 
 async def loader(args) -> None:
@@ -165,7 +169,7 @@ async def loader(args) -> None:
             path = os.path.join(args.input_dir, args.command + '.csv')
             await func(path, AsyncSession)
         else:
-            for name in ('config','batch', 'photometer', 'summary', 'rounds'):
+            for name in ('config','batch', 'photometer', 'summary', 'rounds', 'samples'):
                 path = os.path.join(args.input_dir, name + '.csv')
                 func = TABLE[name]
                 await func(path, AsyncSession)
@@ -181,14 +185,16 @@ def add_args(parser):
     parser_phot = subparser.add_parser('photometer', help='Load photometer CSV')
     parser_summary = subparser.add_parser('summary', help='Load summary CSV')
     parser_rounds = subparser.add_parser('rounds', help='Load rounds CSV')
+    parser_samples = subparser.add_parser('samples', help='Load samples CSV')
     parser_all = subparser.add_parser('all', help='Load all CSVs')
 
-    parser_config.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV file')
-    parser_batch.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV file')
-    parser_phot.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV file')
-    parser_summary.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV file')
-    parser_rounds.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV file')
-    parser_all.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory')
+    parser_config.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
+    parser_batch.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
+    parser_phot.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
+    parser_summary.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
+    parser_rounds.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
+    parser_samples.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
+    parser_all.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
 
 def main():
     '''The main entry point specified by pyproject.toml'''
