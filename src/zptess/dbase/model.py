@@ -40,6 +40,10 @@ from .. import CentralTendency, Calibration
 # get the module logger
 log = logging.getLogger(__name__)
 
+
+def datestr(dt: datetime) -> str:
+    return dt.strftime("%Y-%m-%d %H:%M:%S.%f") if dt is not None else None
+
 # =================================
 # Data Model, declarative ORM style
 # =================================
@@ -111,6 +115,19 @@ class Config(Model):
         return f"Config(section={self.section!r}, prop={self.prop!r}, value={self.value!r})"
 
 
+class Batch(Model):
+    __tablename__ = "batch_t"
+
+    begin_tstamp:   Mapped[datetime] = mapped_column(DateTime, primary_key=True)
+    end_tstamp:     Mapped[Optional[datetime]] = mapped_column(DateTime)
+    email_sent:     Mapped[Optional[bool]]
+    calibrations:   Mapped[Optional[int]]
+    comment:        Mapped[Optional[str]] = mapped_column(String(255))
+
+    def __repr__(self) -> str:
+        return f"Batch(begin={datestr(self.begin_tstamp)}, end={datestr(self.end_tstamp)}, N={self.calibrations!r}, emailed={self.email_sent!r})"
+
+
 class Photometer(Model):
     __tablename__ = "photometer_t"
 
@@ -125,14 +142,14 @@ class Photometer(Model):
     box:                Mapped[Optional[str]] = mapped_column(String(16), default="FSH714")
     collector:          Mapped[Optional[str]] = mapped_column(String(16), default="standard")  #  Collector model
   
-  
-
     # This is not a real column, it s meant for the ORM
     samples: Mapped[List['Sample']] = relationship(back_populates="photometer")
     # This is not a real column, it s meant for the ORM
     calibrations: Mapped[List['Summary']] = relationship(back_populates="photometer")
 
-
+    def __repr__(self) -> str:
+        return f"Photom(id={self.id!r}, name={self.name!r}, mac={self.mac!r})"
+   
     __table_args__ = (
         UniqueConstraint(
             name,
@@ -140,9 +157,6 @@ class Photometer(Model):
             ),
         {})
 
-    def __repr__(self) -> str:
-        return f"TESS(id={self.id!r}, name={self.name!r}, mac={self.mac!r})"
-   
 
 # Samples per round
 # Due to the sliding window collect process, a sample may belong to several rounds
@@ -173,14 +187,14 @@ class Sample(Model):
     # This is not a real column, it s meant for the ORM
     rounds: Mapped[List['Round']] = relationship(secondary=SamplesRounds, back_populates="samples")
 
+    def __repr__(self) -> str:
+        return f"Sample(id={self.id!r}, role={self.role!r} freq={self.freq!r},  seq={self.seq!r})"
+
     __table_args__ = (
         UniqueConstraint(
             tstamp,
             role),
         {})
-
-    def __repr__(self) -> str:
-        return f"Sample(id={self.id!r}, role={self.role!r} freq={self.freq!r}, mag={self.mag!r}, seq={self.seq!r})"
 
 
 class Round(Model):
@@ -201,10 +215,12 @@ class Round(Model):
     begin_tstamp: Mapped[Optional[datetime]] = mapped_column(DateTime)
     end_tstamp:   Mapped[Optional[datetime]] = mapped_column(DateTime)
 
-
     # samples per round. Shoudl match the window size
     # This is not a real column, it s meant for the ORM
     samples: Mapped[List['Sample']] = relationship(secondary=SamplesRounds, back_populates="rounds")
+
+    def __repr__(self) -> str:
+        return f"Round(session={id={self.id!r}, datestr(self.session)}, role={self.role!r}, seq={self.seq!r} Ts={datestr(self.begin_tstamp)}, Te={datestr(self.end_tstamp)})"
 
     __table_args__ = (
         UniqueConstraint(
@@ -234,24 +250,16 @@ class Summary(Model):
     freq:               Mapped[Optional[float]]                            # final chosen frequency
     freq_method:        Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True)
     mag:                Mapped[Optional[float]]
-    comment:            Mapped[Optional[str]] = mapped_column(String(255)) #  Additional comment for the calibration process                            #  final chosen magnitude uzing ficticious ZP
-    
+    comment:            Mapped[Optional[str]] = mapped_column(String(255)) #  Additional comment for the calibration process
 
     # This is not a real column, it s meant for the ORM
     photometer: Mapped['Photometer'] = relationship(back_populates="calibrations")
+
+    def __repr__(self) -> str:
+        return f"Summary(session={datestr(self.session)}, role={self.role!r}, phot_id={self.phot_id!r})"
 
     __table_args__ = (
         UniqueConstraint(
             session,
             role),
         {})
-
-
-class Batch(Model):
-    __tablename__ = "batch_t"
-
-    begin_tstamp:   Mapped[datetime] = mapped_column(DateTime, primary_key=True)
-    end_tstamp:     Mapped[Optional[datetime]] = mapped_column(DateTime)
-    email_sent:     Mapped[Optional[bool]]
-    calibrations:   Mapped[Optional[int]]
-    comment:        Mapped[Optional[str]] = mapped_column(String(255))

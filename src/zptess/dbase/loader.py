@@ -50,7 +50,6 @@ DESCRIPTION = "TESS-W Zero Database Migration tool"
 
 # get the root logger
 log = logging.getLogger(__name__)
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
 # -------------------
 # Auxiliary functions
@@ -66,7 +65,9 @@ async def load_batch(path, async_session: async_sessionmaker[AsyncSessionClass])
                     row['email_sent'] = True if row['email_sent'] == '1' else False
                     row['begin_tstamp'] = datetime.datetime.strptime(row['begin_tstamp'], "%Y-%m-%dT%H:%M:%S") if row['begin_tstamp'] else None
                     row['end_tstamp'] = datetime.datetime.strptime(row['end_tstamp'], "%Y-%m-%dT%H:%M:%S") if row['end_tstamp'] else None
-                    session.add(Batch(**row))
+                    batch = Batch(**row)
+                    log.info("%r", batch)
+                    session.add(batch)
 
 
 async def load_config(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
@@ -76,7 +77,9 @@ async def load_config(path, async_session: async_sessionmaker[AsyncSessionClass]
             with open(path, newline='') as f:
                 reader = csv.DictReader(f, delimiter=';')
                 for row in reader:
-                    session.add(Config(**row))
+                    config = Config(**row)
+                    log.info("%r", config)
+                    session.add(config)
 
 
 async def load_photometer(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
@@ -91,6 +94,7 @@ async def load_photometer(path, async_session: async_sessionmaker[AsyncSessionCl
                     row['filter'] = None if not row['filter'] else row['filter']
                     row['collector'] = None if not row['collector'] else row['collector']
                     phot = Photometer(**row)
+                    log.info("%r", phot)
                     session.add(phot)
                     
 
@@ -114,6 +118,7 @@ async def load_summary(path, async_session: async_sessionmaker[AsyncSessionClass
                     summary = Summary(**row)
                     phot = (await session.scalars(q)).one()
                     summary.photometer = phot
+                    log.info("%r", summary)
                     session.add(summary)
 
 
@@ -131,7 +136,9 @@ async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]
                     row['end_tstamp'] = datetime.datetime.strptime(row['end_tstamp'], "%Y-%m-%dT%H:%M:%S.%f") if row['end_tstamp'] else None
                     for key in ('freq', 'stddev','mag','zp_fict','zero_point','duration'):
                         row[key] = float(row[key]) if row[key] else None
-                    session.add(Round(**row))
+                    round_ = Round(**row)
+                    log.info("%r", round_)
+                    session.add(round_)
 
 
 async def _new_sample(session, row, role, meas_session):
@@ -140,9 +147,8 @@ async def _new_sample(session, row, role, meas_session):
         where(Summary.role == role))
     phot_id = (await session.scalars(q)).one_or_none()
     if not phot_id:
-        log.warn("No photometer for session = %s, role %s", meas_session, role)
+        log.warn("No sample for %s because no photometer for session = %s, role %s", row, meas_session, role)
         return None   
-    log.info("phot id for session = %s, role = %s is %d", meas_session, role, phot_id)
     row['phot_id'] = phot_id 
     return Sample(**row)
 
@@ -175,6 +181,7 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
                     if not sample:
                         continue
                     await _link_sample_to_rounds(session, sample, meas_session)
+                    log.info("%r", sample)
                     session.add(sample)
 # --------------
 # main functions
@@ -233,6 +240,10 @@ def main():
     add_args(parser)
     args = parser.parse_args(sys.argv[1:])
     configure_log(args)
+    if args.verbose:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    else:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     asyncio.run(loader(args))
 
 if __name__ == '__main__':

@@ -22,9 +22,7 @@ from datetime import datetime
 
 from lica.textual.argparse import args_parser
 from lica.textual.logging import configure_log
-
 from lica.sqlalchemy.asyncio.dbase import url, engine, Model
-
 
 #--------------
 # local imports
@@ -66,6 +64,10 @@ def main():
     )
     args = parser.parse_args(sys.argv[1:])
     configure_log(args)
+    if args.verbose:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    else:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     log.info("Creating new schema for %s", url)
     asyncio.run(schema())
 
