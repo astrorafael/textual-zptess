@@ -1,4 +1,4 @@
-App {
+MyTextualApp {
 	width: 114;
 	height: 32;
 }
