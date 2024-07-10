@@ -26,7 +26,7 @@ from lica.textual.logging import configure_log
 
 from . import __version__
 
-from .tui.application import MyTextualApp
+from .tui.view.application import MyTextualApp
 from .tui.controller import Controller
 
 # ----------------
