@@ -31,7 +31,6 @@ from textual.containers import Horizontal, Vertical
 # local imports
 # -------------
 
-from .. import __version__
 from .resources import DEFAULT_CAL_CSS, APP_CAL_PATH, APP_CSS_PATH
 
 # ----------------

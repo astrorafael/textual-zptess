@@ -15,7 +15,7 @@ import sys
 # Module constants
 # ----------------
 
-_CSS_PKG = 'zptess.tui.resources.css'
+_CSS_PKG = 'zptess.tui.view.resources.css'
 
 _CSS_APP_FILE = 'mytextualapp.tcss'
 _CSS_CAL_FILE = 'calibrate.tcss'
@@ -24,7 +24,7 @@ _CSS_CAL_FILE = 'calibrate.tcss'
 APP_CSS_PATH = os.path.join(os.getcwd(), _CSS_APP_FILE)
 APP_CAL_PATH = os.path.join(os.getcwd(), _CSS_CAL_FILE)
 
-_ABOUT_PKG = 'zptess.tui.resources.about'
+_ABOUT_PKG = 'zptess.tui.view.resources.about'
 _ABOUT_RES = 'description.md'
 
 

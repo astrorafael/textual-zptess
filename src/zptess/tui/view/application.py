@@ -33,7 +33,7 @@ from textual.containers import Horizontal, Vertical
 # local imports
 # -------------
 
-from .. import __version__
+from ... import __version__
 from .resources import DEFAULT_APP_CSS, APP_CSS_PATH, ABOUT
 from .calibration import CalibrationPane
 from .configure import ConfigurePane
