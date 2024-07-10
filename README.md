@@ -50,6 +50,12 @@ If you want to process something in the background you will need to creat a new 
 	JOIN summary_t AS s ON (s.session = r.session AND s.role = r.role)
 	ORDER BY s.session, r.round;
 ```
+- Samples
+
+```SQL
+	SELECT session,tstamp,role,seq,freq,temp_box from samples_t ORDER BY session, tstamp, role;
+```
+
 - Batch
 ```SQL
 SELECT * FROM batch_t;

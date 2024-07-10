@@ -140,16 +140,19 @@ async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]
                     log.info("%r", round_)
                     session.add(round_)
 
+ORPHANED_SESSIONS = set()
 
 async def _new_sample(session, row, role, meas_session):
+    global ORPHANED_SESSIONS
     q = (select(Summary.phot_id).
         where(Summary.session == meas_session).
         where(Summary.role == role))
     phot_id = (await session.scalars(q)).one_or_none()
     if not phot_id:
         log.warn("Dropped sample %s (no photometer in session %s)", row, meas_session)
+        ORPHANED_SESSIONS.add(meas_session)
         return None   
-    row['phot_id'] = phot_id 
+    row['phot_id'] = phot_id
     return Sample(**row)
 
 
@@ -164,7 +167,7 @@ async def _link_sample_to_rounds(session, sample, meas_session):
 
 
 async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-     async with async_session() as session:
+    async with async_session() as session:
         async with session.begin():
             log.info("loading samples from %s", path)
             with open(path, newline='') as f:
@@ -183,6 +186,10 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
                     await _link_sample_to_rounds(session, sample, meas_session)
                     log.info("%r", sample)
                     session.add(sample)
+    global ORPHANED_SESSIONS
+    for ses in sorted(ORPHANED_SESSIONS):
+        log.warn("Orphaned sample session %s",ses)
+
 # --------------
 # main functions
 # --------------
