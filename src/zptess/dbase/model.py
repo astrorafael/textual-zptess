@@ -220,7 +220,7 @@ class Round(Model):
     samples: Mapped[List['Sample']] = relationship(secondary=SamplesRounds, back_populates="rounds")
 
     def __repr__(self) -> str:
-        return f"Round(session={id={self.id!r}, datestr(self.session)}, role={self.role!r}, seq={self.seq!r} Ts={datestr(self.begin_tstamp)}, Te={datestr(self.end_tstamp)})"
+        return f"Round(id={self.id!r}, session={datestr(self.session)}, role={self.role!r}, seq={self.seq!r} Ts={datestr(self.begin_tstamp)}, Te={datestr(self.end_tstamp)})"
 
     __table_args__ = (
         UniqueConstraint(

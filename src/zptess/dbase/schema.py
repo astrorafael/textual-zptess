@@ -41,8 +41,7 @@ from .model import Config
 # -----------------------
 
 # get the module logger
-log = logging.getLogger(__name__)
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+log = logging.getLogger(__name__.split('.')[-1])
 
 # -------------------
 # Auxiliary functions
@@ -66,6 +65,7 @@ def main():
     configure_log(args)
     if args.verbose:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        logging.getLogger("aiosqlite").setLevel(logging.INFO)
     else:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     log.info("Creating new schema for %s", url)

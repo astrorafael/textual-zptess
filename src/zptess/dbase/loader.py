@@ -49,7 +49,7 @@ DESCRIPTION = "TESS-W Zero Database Migration tool"
 # -----------------------
 
 # get the root logger
-log = logging.getLogger(__name__)
+log = logging.getLogger(__name__.split('.')[-1])
 
 # -------------------
 # Auxiliary functions
@@ -147,7 +147,7 @@ async def _new_sample(session, row, role, meas_session):
         where(Summary.role == role))
     phot_id = (await session.scalars(q)).one_or_none()
     if not phot_id:
-        log.warn("No sample for %s because no photometer for session = %s, role %s", row, meas_session, role)
+        log.warn("Dropped sample %s (no photometer in session %s)", row, meas_session)
         return None   
     row['phot_id'] = phot_id 
     return Sample(**row)
@@ -242,6 +242,7 @@ def main():
     configure_log(args)
     if args.verbose:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        logging.getLogger("aiosqlite").setLevel(logging.INFO)
     else:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
     asyncio.run(loader(args))
