@@ -200,6 +200,9 @@ class Round(Model):
     zero_point: Mapped[Optional[float]]         # Estimated Zero Point for this round ('test' photometer round only, else NULL)
     nsamples:   Mapped[Optional[int]]           # Number of samples for this round
     duration:   Mapped[Optional[float]]         # Approximate duration, in seconds
+    begin_tstamp: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    end_tstamp:   Mapped[Optional[datetime]] = mapped_column(DateTime)
+
 
     # samples per round. Shoudl match the window size
     # This is not a real column, it s meant for the ORM
