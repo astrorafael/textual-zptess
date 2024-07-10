@@ -143,11 +143,23 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
             with open(path, newline='') as f:
                 reader = csv.DictReader(f, delimiter=';')
                 for row in reader:
-                    row['session'] = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
+                    meas_session = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
+                    del row['session']
+                    role = Role.REF if row['role'] == 'ref' else Role.TEST
+                    q = (select(Summary.phot_id).
+                        where(Summary.session == meas_session).
+                        where(Summary.role == role))
+                    phot_id = (await session.scalars(q)).one_or_none()
+                    if not phot_id:
+                        log.info("No photometer for session = %s, role %s", meas_session, role)
+                        continue
+                    #phot = await summary.awaitable_attrs.photometer
+                    log.info("KAKA = %s", phot_id)
                     row['tstamp'] = datetime.datetime.strptime(row['tstamp'], "%Y-%m-%dT%H:%M:%S.%f")
                     row['temp_box'] = float(row['temp_box']) if row['temp_box'] else None
                     row['freq'] = float(row['freq'])
                     row['seq'] = int(row['seq']) if row['seq'] else None
+                    row['phot_id'] = phot_id
                     session.add(Sample(**row))
 # --------------
 # main functions

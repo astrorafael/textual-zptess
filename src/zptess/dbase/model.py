@@ -159,10 +159,10 @@ class Sample(Model):
     __tablename__ = "samples_t"
 
     id:         Mapped[int] = mapped_column(primary_key=True)
-    phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), nullable=True)
+    phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
     tstamp:     Mapped[datetime] = mapped_column(DateTime)
     role:       Mapped[RoleType] = mapped_column(RoleType)
-    session:    Mapped[datetime] = mapped_column(DateTime)
+    #session:    Mapped[datetime] = mapped_column(DateTime)
     seq:        Mapped[Optional[int]]
     freq:       Mapped[float]
     temp_box:   Mapped[Optional[float]]
