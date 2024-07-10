@@ -69,8 +69,6 @@ async def load_batch(path, async_session: async_sessionmaker[AsyncSessionClass])
                     session.add(Batch(**row))
 
 
-
-
 async def load_config(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
         async with session.begin():
@@ -118,6 +116,7 @@ async def load_summary(path, async_session: async_sessionmaker[AsyncSessionClass
                     summary.photometer = phot
                     session.add(summary)
 
+
 async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
         async with session.begin():
@@ -135,6 +134,28 @@ async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]
                     session.add(Round(**row))
 
 
+async def _new_sample(session, row, role, meas_session):
+    q = (select(Summary.phot_id).
+        where(Summary.session == meas_session).
+        where(Summary.role == role))
+    phot_id = (await session.scalars(q)).one_or_none()
+    if not phot_id:
+        log.warn("No photometer for session = %s, role %s", meas_session, role)
+        return None   
+    log.info("phot id for session = %s, role = %s is %d", meas_session, role, phot_id)
+    row['phot_id'] = phot_id 
+    return Sample(**row)
+
+
+async def _link_sample_to_rounds(session, sample, meas_session):
+    q = (select(Round).
+        where(Round.session == meas_session).
+        where(Round.role == sample.role))
+    rounds = (await session.scalars(q)).all()
+    for r in rounds:
+        if r.begin_tstamp <= sample.tstamp <= r.end_tstamp:
+            sample.rounds.append(r) # no need to do r.append(sample) !!!
+
 
 async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
@@ -146,21 +167,15 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
                     meas_session = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
                     del row['session']
                     role = Role.REF if row['role'] == 'ref' else Role.TEST
-                    q = (select(Summary.phot_id).
-                        where(Summary.session == meas_session).
-                        where(Summary.role == role))
-                    phot_id = (await session.scalars(q)).one_or_none()
-                    if not phot_id:
-                        log.info("No photometer for session = %s, role %s", meas_session, role)
-                        continue
-                    #phot = await summary.awaitable_attrs.photometer
-                    log.info("KAKA = %s", phot_id)
                     row['tstamp'] = datetime.datetime.strptime(row['tstamp'], "%Y-%m-%dT%H:%M:%S.%f")
                     row['temp_box'] = float(row['temp_box']) if row['temp_box'] else None
                     row['freq'] = float(row['freq'])
                     row['seq'] = int(row['seq']) if row['seq'] else None
-                    row['phot_id'] = phot_id
-                    session.add(Sample(**row))
+                    sample = await _new_sample(session, row, role, meas_session)
+                    if not sample:
+                        continue
+                    await _link_sample_to_rounds(session, sample, meas_session)
+                    session.add(sample)
 # --------------
 # main functions
 # --------------
@@ -181,7 +196,7 @@ async def loader(args) -> None:
             path = os.path.join(args.input_dir, args.command + '.csv')
             await func(path, AsyncSession)
         else:
-            for name in ('config','batch', 'photometer', 'summary', 'rounds', ):
+            for name in ('config','batch', 'photometer', 'summary', 'rounds', 'samples'):
                 path = os.path.join(args.input_dir, name + '.csv')
                 func = TABLE[name]
                 await func(path, AsyncSession)

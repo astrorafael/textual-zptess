@@ -162,7 +162,6 @@ class Sample(Model):
     phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
     tstamp:     Mapped[datetime] = mapped_column(DateTime)
     role:       Mapped[RoleType] = mapped_column(RoleType)
-    #session:    Mapped[datetime] = mapped_column(DateTime)
     seq:        Mapped[Optional[int]]
     freq:       Mapped[float]
     temp_box:   Mapped[Optional[float]]
