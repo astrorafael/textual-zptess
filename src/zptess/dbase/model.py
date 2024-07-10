@@ -159,14 +159,13 @@ class Sample(Model):
     __tablename__ = "samples_t"
 
     id:         Mapped[int] = mapped_column(primary_key=True)
-    phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
+    phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), nullable=True)
     tstamp:     Mapped[datetime] = mapped_column(DateTime)
     role:       Mapped[RoleType] = mapped_column(RoleType)
     session:    Mapped[datetime] = mapped_column(DateTime)
-    seq:        Mapped[int]
-    mag:        Mapped[float]
+    seq:        Mapped[Optional[int]]
     freq:       Mapped[float]
-    temp_box:   Mapped[float]
+    temp_box:   Mapped[Optional[float]]
 
     # This is not a real column, it s meant for the ORM
     photometer: Mapped['Photometer'] = relationship(back_populates="samples")

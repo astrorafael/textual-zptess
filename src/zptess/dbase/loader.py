@@ -169,7 +169,7 @@ async def loader(args) -> None:
             path = os.path.join(args.input_dir, args.command + '.csv')
             await func(path, AsyncSession)
         else:
-            for name in ('config','batch', 'photometer', 'summary', 'rounds', 'samples'):
+            for name in ('config','batch', 'photometer', 'summary', 'rounds', ):
                 path = os.path.join(args.input_dir, name + '.csv')
                 func = TABLE[name]
                 await func(path, AsyncSession)
