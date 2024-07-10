@@ -125,7 +125,16 @@ async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]
             with open(path, newline='') as f:
                 reader = csv.DictReader(f, delimiter=';')
                 for row in reader:
-                    log.info("To be continued")
+                    row['seq'] = row['round']
+                    del row['round']
+                    row['session'] = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
+                    row['begin_tstamp'] = datetime.datetime.strptime(row['begin_tstamp'], "%Y-%m-%dT%H:%M:%S.%f") if row['begin_tstamp'] else None
+                    row['end_tstamp'] = datetime.datetime.strptime(row['end_tstamp'], "%Y-%m-%dT%H:%M:%S.%f") if row['end_tstamp'] else None
+                    for key in ('freq', 'stddev','mag','zp_fict','zero_point','duration'):
+                        row[key] = float(row[key]) if row[key] else None
+                    session.add(Round(**row))
+
+
 
 async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
