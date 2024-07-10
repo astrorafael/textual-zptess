@@ -68,14 +68,7 @@ async def load_batch(path, async_session: async_sessionmaker[AsyncSessionClass])
                     row['end_tstamp'] = datetime.datetime.strptime(row['end_tstamp'], "%Y-%m-%dT%H:%M:%S") if row['end_tstamp'] else None
                     session.add(Batch(**row))
 
-async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-     async with async_session() as session:
-        async with session.begin():
-            log.info("loading rounds from %s", path)
-            with open(path, newline='') as f:
-                reader = csv.DictReader(f, delimiter=';')
-                for row in reader:
-                    log.info("To be continued")
+
 
 
 async def load_config(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
@@ -102,9 +95,6 @@ async def load_photometer(path, async_session: async_sessionmaker[AsyncSessionCl
                     phot = Photometer(**row)
                     session.add(phot)
                     
-                   
-            
-
 
 async def load_summary(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
      async with async_session() as session:
@@ -117,16 +107,35 @@ async def load_summary(path, async_session: async_sessionmaker[AsyncSessionClass
                     del row['mac']; del row['name']
                     row['session'] = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
                     row['upd_flag'] = True if row['upd_flag'] == '1' else False
-                    for key in ('zero_point','freq', 'zero_point_method', 'freq_method', 'mag', 'nrounds', 'prev_zp'):
+                    row['calibration'] = None if not row['calibration'] else row['calibration']
+                    for key in ('zero_point', 'zp_offset','prev_zp','freq','mag'):
+                        row[key] = float(row[key]) if row[key] else None
+                    for key in ('zero_point_method', 'freq_method', 'nrounds'):
                         row[key] = None if not row[key] else row[key]
                     q = select(Photometer).where(Photometer.mac==mac, Photometer.name==name)
                     summary = Summary(**row)
-                    phot = (await session.scalars(q)).one_or_none()
-                    if phot is not None:
-                        summary.photometer = phot
-                    else:
-                        log.warn("photometer mot found by name %s, mac %s")
+                    phot = (await session.scalars(q)).one()
+                    summary.photometer = phot
                     session.add(summary)
+
+async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+     async with async_session() as session:
+        async with session.begin():
+            log.info("loading rounds from %s", path)
+            with open(path, newline='') as f:
+                reader = csv.DictReader(f, delimiter=';')
+                for row in reader:
+                    log.info("To be continued")
+
+async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+     async with async_session() as session:
+        async with session.begin():
+            log.info("loading samples from %s", path)
+            with open(path, newline='') as f:
+                reader = csv.DictReader(f, delimiter=';')
+                for row in reader:
+                    log.info("To be continued")
+
 
 # --------------
 # main functions
@@ -147,7 +156,7 @@ async def loader(args) -> None:
             path = os.path.join(args.input_dir, args.command + '.csv')
             await func(path, AsyncSession)
         else:
-            for name in ('config','batch'):
+            for name in ('config','batch', 'photometer'):
                 path = os.path.join(args.input_dir, name + '.csv')
                 func = TABLE[name]
                 await func(path, AsyncSession)
