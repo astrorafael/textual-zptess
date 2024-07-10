@@ -164,4 +164,4 @@ cython_debug/
 src/zptess/_version.py
 test*.py
 *.csv
-./mytextualapp.tcss
+mytextualapp.tcss
