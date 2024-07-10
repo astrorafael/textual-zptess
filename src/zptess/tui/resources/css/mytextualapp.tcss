@@ -2,38 +2,3 @@ App {
 	width: 114;
 	height: 32;
 }
-
-Footer {
-	height: 1;
-}
-
-.mylabels
-{
-	margin: 1 0 0 0;	
-}
-
-#ref_log {
-	background: darkblue;
-}
-
-#tst_log {
-	background: black;
-}
-
-.table {
-	 height: 5fr;
-}
-
-.box {
-    border: heavy yellow;
-    height: 1fr;
-}
-
-Switch {
-    height: auto;
-    width: auto;
-    align: right bottom;
-}
-Sparkline {
-	height: 4;
-}

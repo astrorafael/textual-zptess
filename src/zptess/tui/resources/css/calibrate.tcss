@@ -1,0 +1,66 @@
+CalibPane > Vertical {
+	width: 1fr;
+	background: blue;
+}
+
+CalibPane > Vertical > Horizontal {
+	height: 2fr;
+	background: red; /* dbg */
+}
+
+CalibPane > Vertical > Log {
+	border: double yellow;
+	height: 1fr;
+}
+
+CalibPane > Vertical > Horizontal > DataTable {
+	width: 1fr;
+	background: white; /* dbg */
+}
+
+CalibPane > Vertical > Horizontal > Vertical {
+	width: 2fr;
+	background: green; /* dbg */
+	padding: 1;
+}
+
+CalibPane > Vertical > Horizontal > Rule {
+	border:  solid yellow;
+	background: violet; /* dbg */
+}
+
+CalibPane > Vertical > Horizontal > Vertical > ProgressBar {
+	height: 1fr;
+}
+
+CalibPane > Vertical > Horizontal > Vertical > Switch {
+	margin: 0 0 1 0;
+}
+
+CalibPane > Vertical > Horizontal > Vertical > WritableLabel {
+	background: purple;
+	height: 0.5fr;
+	width: 100%;
+}
+
+CalibPane > Vertical > Horizontal > Vertical > Sparkline {
+	height: 1fr;
+	background: orange; /* dbg */
+	padding: 2;
+}
+CalibPane > Vertical > Horizontal > Horizontal {
+	align: center middle;
+	background: blue; /* dbg */
+
+}
+CalibPane > Vertical > Horizontal > Horizontal > Button {
+	margin: 1;
+}
+
+#cal_horizontal {
+	border:  double yellow;
+}
+
+#stats_table {
+	width: 50%;
+}

@@ -21,11 +21,12 @@ import statistics
 
 from lica.asyncio.photometer import Model, Role
 from lica.textual.widgets.about import About
+from lica.textual.widgets.label import WritableLabel
 
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Log, DataTable, Label, Button, Static, Switch, ProgressBar, Sparkline, Rule
-from textual.widgets import  TabbedContent, TabPane
+from textual.widgets import  Placeholder, TabbedContent, TabPane
 from textual.containers import Horizontal, Vertical
 
 #--------------
@@ -33,19 +34,11 @@ from textual.containers import Horizontal, Vertical
 # -------------
 
 from .. import __version__
+from .resources import DEFAULT_CAL_CSS, DEFAULT_APP_CSS, APP_CAL_PATH, APP_CSS_PATH, ABOUT
 
 # ----------------
 # Module constants
 # ----------------
-
-
-CSS_PKG = 'zptess.tui.resources.css'
-CSS_FILE = 'mytextualapp.tcss'
-# Outside the Python packages
-CSS_PATH =  os.path.join(os.getcwd(), CSS_FILE)
-
-ABOUT_PKG = 'zptess.tui.resources.about'
-ABOUT_RES = 'description.md'
 
 # -----------------------
 # Module global variables
@@ -54,19 +47,84 @@ ABOUT_RES = 'description.md'
 log = logging.getLogger(__name__)
 
 
-# Instead of a long, embeddded string, we read it as a Python resource
-if sys.version_info[1] < 11:
-    from pkg_resources import resource_string as resource_bytes
-    DEFAULT_CSS = resource_bytes(CSS_PKG, CSS_FILE).decode('utf-8')
-    ABOUT = resource_bytes(ABOUT_PKG, ABOUT_RES).decode('utf-8')
-else:
-    from importlib_resources import files
-    DEFAULT_CSS = files(CSS_PKG).joinpath(CSS_FILE).read_text()
-    ABOUT = files(ABOUT_PKG).joinpath(ABOUT_RES).read_text()
-
 # -------------------
 # Auxiliary functions
 # -------------------
+
+class ConfigPane(Static):
+
+    def compose(self) -> ComposeResult:
+        yield Placeholder()
+
+    def on_mount(self) -> None:
+        pass
+
+class CalibPane(Static):
+
+    DEFAULT_CSS = DEFAULT_CAL_CSS
+    CSS_PATH = APP_CAL_PATH
+
+    def __init__(self, *args, **kwargs):
+        self.log_w = [None, None]
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            with Horizontal():
+                yield DataTable(id="ref_phot_info")
+                with Vertical():
+                    yield Label(f"{Role.REF.tag()} Photometer On/Off")
+                    yield Switch(id="ref_phot")
+                    yield Label("Ring Buffer")
+                    yield ProgressBar(id="ref_ring", total=100, show_eta=False)
+                    yield WritableLabel("<statistics here>")
+                    yield Sparkline([], id="ref_graph", summary_function=statistics.median_low)
+                yield Rule(orientation="vertical")
+                yield DataTable(id="tst_phot_info")
+                with Vertical():
+                    yield Label(f"{Role.TEST.tag()} Photometer On/Off")
+                    yield Switch(id="tst_phot")
+                    yield Label("Ring Buffer")
+                    yield ProgressBar(id="tst_ring", total=100, show_eta=False)
+                    yield WritableLabel("<statistics here>")
+                    yield Sparkline([], id="ref_graph", summary_function=statistics.median_low)
+            with Horizontal(id="cal_horizontal"):
+                 yield DataTable(id="stats_table")
+                 with Horizontal():
+                     yield Button.success("GO!", id="ok_button")
+                     yield Button.error("Cancel", id="cancel_button")
+            yield Log(id="ref_log")
+            yield Log(id="tst_log")
+
+
+    def on_mount(self) -> None:
+        self.log_w[Role.REF] = self.query_one("#ref_log")
+        self.log_w[Role.TEST] = self.query_one("#tst_log")
+        self.log_w[Role.REF].border_title = f"{Role.REF.tag()} LOG"
+        self.log_w[Role.TEST].border_title = f"{Role.TEST.tag()} LOG"
+        self.stats_w = self.query_one("#stats_table")
+        self.stats_w.add_columns(*("Round #", "Freq (Hz)", "Magnitude", "\u0394 Magnitude", "Zero Point"))
+        self.stats_w.fixed_columns = 5
+        self.stats_w.show_cursor = False
+        self.ok_button_w = self.query_one("#ok_button")
+        self.cancel_button_w = self.query_one("#cancel_button")
+        for ident in ("#ref_phot_info", "#tst_phot_info"):
+            table = self.query_one(ident)
+            table.add_columns(*("Property", "Value"))
+            table.fixed_columns = 2
+            table.show_cursor = False
+
+    def log(role, msg):
+        self.log_w[role].write_line(line)
+        
+
+class ExportPane(Static):
+
+    def compose(self) -> ComposeResult:
+        yield Placeholder()
+
+    def on_mount(self) -> None:
+        pass
 
 class MyTextualApp(App[str]):
 
@@ -79,8 +137,8 @@ class MyTextualApp(App[str]):
         ("a", "about", "About")
     ]
 
-    DEFAULT_CSS = DEFAULT_CSS
-    CSS_PATH = CSS_PATH
+    DEFAULT_CSS = DEFAULT_APP_CSS
+    CSS_PATH = APP_CSS_PATH
 
     def __init__(self, controller, description):
         self.controller = controller
@@ -93,30 +151,7 @@ class MyTextualApp(App[str]):
         self.SUB_TITLE = description
         super().__init__()
 
-    def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
-        yield Footer()
-        with Horizontal():
-            with Horizontal():
-                yield DataTable(id="ref_metadata")
-                with Vertical():
-                    yield Label("Photometer On/Off", classes="mylabels")
-                    yield Switch(id="ref_phot")
-                    yield Label("Ring Buffer", classes="mylabels")
-                    yield ProgressBar(id="ref_ring", total=100, show_eta=False)
-                    yield Sparkline([], id="ref_graph", summary_function=statistics.median_low)
-            with Horizontal():
-                yield DataTable(id="tst_metadata")
-                with Vertical():
-                    yield Label("Photometer On/Off", classes="mylabels")
-                    yield Switch(id="tst_phot")
-                    yield Label("Ring Buffer", classes="mylabels")
-                    yield ProgressBar(id="tst_ring", total=100, show_eta=False)
-                    yield Sparkline([], id="tst_graph", summary_function=statistics.median_low)
-        yield Log(id="ref_log", classes="box")
-        yield Log(id="tst_log", classes="box")
-
-
+    
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
         with Horizontal():
@@ -143,9 +178,25 @@ class MyTextualApp(App[str]):
                 yield Rule(line_style="dashed")
                 yield Sparkline([], id="tst_graph", summary_function=statistics.median_low)
         yield Footer()
-        
+
+
+    def compose(self) -> ComposeResult:
+        yield Header(show_clock=True)
+        yield Footer()
+        with TabbedContent(initial="calibrate_tab"):
+            with TabPane("Configure", id="config_tab"):
+                yield ConfigPane(id="config_pane")
+            with TabPane("Calibrate", id="calibrate_tab"):
+                yield CalibPane(id="calibrate_pane")
+            with TabPane("Export", id="export_tab"):
+                yield ExportPane(id="export_pane")
+
 
     def on_mount(self) -> None:
+        self.log_w[Role.REF] = self.query_one("#ref_log")
+        self.log_w[Role.TEST] = self.query_one("#tst_log")
+        return
+
         # Apparently containers do not have a border_title to show
         for ident in ("#ref_metadata", "#tst_metadata"):
             table = self.query_one(ident)
@@ -153,10 +204,7 @@ class MyTextualApp(App[str]):
             table.fixed_columns = 2
             table.show_cursor = False
         
-        self.log_w[Role.REF] = self.query_one("#ref_log")
-        self.log_w[Role.TEST] = self.query_one("#tst_log")
-        self.log_w[Role.REF].border_title = f"{Role.REF} LOG"
-        self.log_w[Role.TEST].border_title = f"{Role.TEST} LOG"
+        
 
         self.graph_w[Role.REF] = self.query_one("#ref_graph")
         self.graph_w[Role.TEST] = self.query_one("#tst_graph")
