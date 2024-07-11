@@ -19,13 +19,12 @@ from datetime import datetime
 # Third party libraries
 # ===============# # -
 
-from sqlalchemy import Enum, Table, Column, Integer, Float, String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
+from sqlalchemy import select, Enum, Table, Column, Integer, Float, String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from lica.sqlalchemy.asyncio.dbase import Model
-
+from lica.sqlalchemy.view import view
 from lica.asyncio.photometer import Model as PhotModel, Role, Sensor
-
 
 from .. import CentralTendency, Calibration
 
@@ -230,7 +229,7 @@ class Round(Model):
     samples: Mapped[List['Sample']] = relationship(secondary=SamplesRounds, back_populates="rounds")
 
     def __repr__(self) -> str:
-        return f"Round(id={self.id!r}, summary_id={datestr(self.summ_id)}, role={self.role!r}, seq={self.seq!r} Ts={datestr(self.begin_tstamp)}, Te={datestr(self.end_tstamp)})"
+        return f"Round(id={self.id!r}, summary_id={self.summ_id}, role={self.role!r}, seq={self.seq!r} Ts={datestr(self.begin_tstamp)}, Te={datestr(self.end_tstamp)})"
 
     __table_args__ = (
         UniqueConstraint(
@@ -264,4 +263,36 @@ class Sample(Model):
             role),
         {})
 
+# Create the view for barebones SQL statements from console
+summary_view = view(
+    name = "summary_v",
+    metadata = Model.metadata,
+    selectable = select(
+        Photometer.__table__.c.name.label("name"),
+        Photometer.__table__.c.mac.label("mac"),
+        Summary.__table__.c.id.label("id"),
+        Summary.__table__.c.session.label("session"),
+        Summary.__table__.c.role.label("role"),
+        Summary.__table__.c.nrounds.label("nrounds"),
+        Summary.__table__.c.upd_flag.label("upd_flag"),
+        Summary.__table__.c.zero_point.label("zero_point"),
+        Summary.__table__.c.calibration.label("calibration"),
+        Summary.__table__.c.prev_zp.label("prev_zp"),
+        Summary.__table__.c.freq.label("freq"),
+        Summary.__table__.c.mag.label("mag"),
+        Summary.__table__.c.prev_freq_offset.label("prev_freq_offset"),
+        Summary.__table__.c.zero_point_method.label("zero_point_method"),
+        Summary.__table__.c.freq_method.label("freq_method"),
+        Summary.__table__.c.calversion.label("calversion"),
+        Summary.__table__.c.zp_offset.label("zp_offset"),
+        Summary.__table__.c.comment.label("comment"),
+    )
+    .select_from(Summary.__table__.join(Photometer.__table__))
+)
 
+
+class SummaryView(Model):
+        __table__ = summary_view
+
+        def __repr__(self) -> str:
+            return f"SummaryView(name={self.name}, mac={self.mac}, session={datestr(self.session)}, role={self.role!r}, nrounds={self.nrounds!r}, zero_point={self.zero_point!r})"

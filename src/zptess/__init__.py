@@ -18,9 +18,15 @@ class CentralTendency(enum.Enum):
     MODE = "mode"
     MEAN = "mean"
 
+    def __repr__(self):
+    	return self.value
+
 class Calibration(enum.Enum):
     MANUAL = "MANUAL"
     AUTO = "AUTO"
+
+    def __repr__(self):
+    	return self.value
 
 
 SERIAL_PORT_PREFIX = "/dev/ttyUSB"

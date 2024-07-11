@@ -29,6 +29,7 @@ from lica.sqlalchemy.asyncio.dbase import url, engine, Model
 # -------------
 
 from .. import __version__
+
 # We must pull one model to make it work
 from .model import Config
 
