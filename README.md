@@ -44,11 +44,9 @@ If you want to process something in the background you will need to creat a new 
 
 - Rounds
 ```SQL
-	SELECT DISTINCT s.session, s.name, s.mac, s.role, r.round, r.begin_tstamp, r.end_tstamp,r.central, r.freq, r.stddev, r.mag, r.zp_fict, r.zero_point, 
-	r.nsamples, r.duration
+	SELECT DISTINCT r.session, r.round, r.role, r.begin_tstamp, r.end_tstamp,r.central, r.freq, r.stddev, r.mag, r.zp_fict, r.zero_point, r.nsamples, r.duration
 	FROM rounds_t AS r
-	JOIN summary_t AS s ON (s.session = r.session AND s.role = r.role)
-	ORDER BY s.session, r.round;
+	ORDER BY r.session, r.round, r.role;
 ```
 - Samples
 

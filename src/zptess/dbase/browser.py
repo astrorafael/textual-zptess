@@ -74,15 +74,19 @@ async def browse_rounds(meas_session, async_session: async_sessionmaker[AsyncSes
     async with async_session() as session:
         async with session.begin():
             log.info("browsing rounds for %s", meas_session)
-            q = (select(Photometer.name, Photometer.mac, Summary.role, Summary.calibration, Summary.nrounds, Summary.zero_point, Round.seq).
+            q = (select(Photometer.name, Photometer.mac, Summary, Round).
                 join(Photometer).
                 join(Round).
                 where(Summary.session == meas_session).
                 order_by(Summary.role.asc())
                 )
             result = (await session.execute(q)).all()
+            log.info("Found %d round results", len(result))
             for row in result:
-                log.info(row)
+                summary = row[-2]
+                round_ = row[-1]
+                assert summary.role == round_.role
+                log.info(round_)
             
 
 
@@ -97,12 +101,12 @@ async def browse_samples(meas_session, async_session: async_sessionmaker[AsyncSe
                 order_by(Summary.role.asc())
             )
             result = (await session.execute(q)).all()
+            log.info("Found %d round results", len(result))
             for row in result:
-                log.info(row)
                 round_ = row[-1]
                 samples = await round_.awaitable_attrs.samples
-                for sample in samples:
-                    log.info(sample)
+                log.info("%s Round %d has %d samples", round_.role, round_.seq, len(samples))
+               
 
 
             
