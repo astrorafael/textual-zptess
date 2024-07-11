@@ -295,4 +295,4 @@ class SummaryView(Model):
         __table__ = summary_view
 
         def __repr__(self) -> str:
-            return f"SummaryView(name={self.name}, mac={self.mac}, session={datestr(self.session)}, role={self.role!r}, nrounds={self.nrounds!r}, zero_point={self.zero_point!r})"
+            return f"SummaryView(name={self.name}, mac={self.mac}, session={datestr(self.session)}, role={self.role!r}, nrounds={self.nrounds!r}, zp={self.zero_point!r}, calib={self.calibration!r}, freq={self.freq!r})"
