@@ -56,7 +56,7 @@ log = logging.getLogger(__name__.split('.')[-1])
 # -------------------
 
 async def load_batch(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-     async with async_session() as session:
+    async with async_session() as session:
         async with session.begin():
             log.info("loading batch data from %s", path)
             with open(path, newline='') as f:
@@ -71,7 +71,7 @@ async def load_batch(path, async_session: async_sessionmaker[AsyncSessionClass])
 
 
 async def load_config(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-     async with async_session() as session:
+    async with async_session() as session:
         async with session.begin():
             log.info("loading config from %s", path)
             with open(path, newline='') as f:
@@ -83,7 +83,7 @@ async def load_config(path, async_session: async_sessionmaker[AsyncSessionClass]
 
 
 async def load_photometer(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-     async with async_session() as session:
+    async with async_session() as session:
         async with session.begin():
             log.info("loading photometer from %s", path)
             with open(path, newline='') as f:
@@ -99,7 +99,7 @@ async def load_photometer(path, async_session: async_sessionmaker[AsyncSessionCl
                     
 
 async def load_summary(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-     async with async_session() as session:
+    async with async_session() as session:
         async with session.begin():
             log.info("loading summary from %s", path)
             with open(path, newline='') as f:
@@ -121,9 +121,9 @@ async def load_summary(path, async_session: async_sessionmaker[AsyncSessionClass
                     log.info("%r", summary)
                     session.add(summary)
 
-
+ORPHANED_SESSIONS_IN_ROUNDS = set()
 async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-     async with async_session() as session:
+    async with async_session() as session:
         async with session.begin():
             log.info("loading rounds from %s", path)
             with open(path, newline='') as f:
@@ -131,39 +131,42 @@ async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]
                 for row in reader:
                     row['seq'] = row['round']
                     del row['round']
-                    row['session'] = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
+                    meas_session = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
                     row['begin_tstamp'] = datetime.datetime.strptime(row['begin_tstamp'], "%Y-%m-%dT%H:%M:%S.%f") if row['begin_tstamp'] else None
                     row['end_tstamp'] = datetime.datetime.strptime(row['end_tstamp'], "%Y-%m-%dT%H:%M:%S.%f") if row['end_tstamp'] else None
                     for key in ('freq', 'stddev','mag','zp_fict','zero_point','duration'):
                         row[key] = float(row[key]) if row[key] else None
+                    q = select(Summary).where(Summary.session==meas_session, Summary.role==row['role'])
+                    summary = (await session.scalars(q)).one_or_none()
+                    if not summary:
+                        log.warn("No summary for round: session=%(session)s seq=%(seq)s, role=%(role)s,", row)
+                        ORPHANED_SESSIONS_IN_ROUNDS.add(meas_session)
+                        continue
+                    del row['session']
                     round_ = Round(**row)
+                    round_.summary = summary
                     log.info("%r", round_)
                     session.add(round_)
-
-ORPHANED_SESSIONS = set()
-
-async def _new_sample(session, row, role, meas_session):
-    global ORPHANED_SESSIONS
-    q = (select(Summary.phot_id).
-        where(Summary.session == meas_session).
-        where(Summary.role == role))
-    phot_id = (await session.scalars(q)).one_or_none()
-    if not phot_id:
-        log.warn("Dropped sample %s (no photometer in session %s)", row, meas_session)
-        ORPHANED_SESSIONS.add(meas_session)
-        return None   
-    row['phot_id'] = phot_id
-    return Sample(**row)
+    log.warn("###########################")
+    log.warn("ORPHANED SESSIONS IN ROUNDS")
+    log.warn("###########################")
+    for s in ORPHANED_SESSIONS_IN_ROUNDS:
+        log.warn(s)
 
 
-async def _link_sample_to_rounds(session, sample, meas_session):
-    q = (select(Round).
-        where(Round.session == meas_session).
-        where(Round.role == sample.role))
-    rounds = (await session.scalars(q)).all()
+ORPHANED_SESSIONS_IN_SAMPLES = set()
+async def _link_sample_to_rounds(session, sample, meas_session, role):
+    q = select(Summary).where(Summary.session==meas_session, Summary.role==role)
+    summary = (await session.scalars(q)).one_or_none()
+    if not summary:
+        ORPHANED_SESSIONS_IN_SAMPLES.add(meas_session)
+        log.warn("Can't find session %s for this sample %s", meas_session, sample)
+        return False
+    rounds = await summary.awaitable_attrs.rounds # Asunchronous relationship load
     for r in rounds:
         if r.begin_tstamp <= sample.tstamp <= r.end_tstamp:
             sample.rounds.append(r) # no need to do r.append(sample) !!!
+    return True
 
 
 async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
@@ -175,20 +178,23 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
                 for row in reader:
                     meas_session = datetime.datetime.strptime(row['session'], "%Y-%m-%dT%H:%M:%S")
                     del row['session']
-                    role = Role.REF if row['role'] == 'ref' else Role.TEST
                     row['tstamp'] = datetime.datetime.strptime(row['tstamp'], "%Y-%m-%dT%H:%M:%S.%f")
                     row['temp_box'] = float(row['temp_box']) if row['temp_box'] else None
                     row['freq'] = float(row['freq'])
                     row['seq'] = int(row['seq']) if row['seq'] else None
-                    sample = await _new_sample(session, row, role, meas_session)
-                    if not sample:
+                    sample = Sample(**row)
+                    result = await _link_sample_to_rounds(session, sample, meas_session, row['role'])
+                    if not result:
                         continue
-                    await _link_sample_to_rounds(session, sample, meas_session)
                     log.info("%r", sample)
                     session.add(sample)
-    global ORPHANED_SESSIONS
-    for ses in sorted(ORPHANED_SESSIONS):
-        log.warn("Orphaned sample session %s",ses)
+    
+    log.warn("============================")
+    log.warn("ORPHANED SESSIONS IN SAMPLES")
+    log.warn("============================")
+    for s in ORPHANED_SESSIONS_IN_SAMPLES:
+        log.warn(s)
+
 
 # --------------
 # main functions

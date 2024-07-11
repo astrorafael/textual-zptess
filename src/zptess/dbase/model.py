@@ -143,8 +143,6 @@ class Photometer(Model):
     collector:          Mapped[Optional[str]] = mapped_column(String(16), default="standard")  #  Collector model
   
     # This is not a real column, it s meant for the ORM
-    samples: Mapped[List['Sample']] = relationship(back_populates="photometer")
-    # This is not a real column, it s meant for the ORM
     calibrations: Mapped[List['Summary']] = relationship(back_populates="photometer")
 
     def __repr__(self) -> str:
@@ -156,79 +154,6 @@ class Photometer(Model):
             mac,
             ),
         {})
-
-
-# Samples per round
-# Due to the sliding window collect process, a sample may belong to several rounds
-# This part is not part of the ORM, as it uses the basic Table API
-SamplesRounds = Table(
-    "samples_rounds_t",
-    Model.metadata,
-    Column('round_id', ForeignKey('rounds_t.id'), nullable=False, primary_key=True),
-    Column('sample_id', ForeignKey('samples_t.id'), nullable=False, primary_key=True),
-)
-
-
-class Sample(Model):
-    __tablename__ = "samples_t"
-
-    id:         Mapped[int] = mapped_column(primary_key=True)
-    phot_id:    Mapped[int] = mapped_column(ForeignKey("photometer_t.id"), index=True)
-    tstamp:     Mapped[datetime] = mapped_column(DateTime)
-    role:       Mapped[RoleType] = mapped_column(RoleType)
-    seq:        Mapped[Optional[int]]
-    freq:       Mapped[float]
-    temp_box:   Mapped[Optional[float]]
-
-    # This is not a real column, it s meant for the ORM
-    photometer: Mapped['Photometer'] = relationship(back_populates="samples")
-
-    # rounds per sample (at least 1...)
-    # This is not a real column, it s meant for the ORM
-    rounds: Mapped[List['Round']] = relationship(secondary=SamplesRounds, back_populates="samples")
-
-    def __repr__(self) -> str:
-        return f"Sample(id={self.id!r}, role={self.role!r} freq={self.freq!r},  seq={self.seq!r})"
-
-    __table_args__ = (
-        UniqueConstraint(
-            tstamp,
-            role),
-        {})
-
-
-class Round(Model):
-    __tablename__ = "rounds_t"
-
-    id:         Mapped[int] = mapped_column(primary_key=True)
-    seq:        Mapped[int] = mapped_column('round', Integer) # Round number form 1..NRounds
-    role:       Mapped[RoleType] = mapped_column(RoleType)
-    session:    Mapped[datetime] = mapped_column(DateTime)
-    freq:       Mapped[Optional[float]]         # Average of Median method
-    central:    Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True) 
-    stddev:     Mapped[Optional[float]]         # Standard deviation for frequency central estimate
-    mag:        Mapped[Optional[float]]         # magnitiude corresponding to central frequency and summing ficticious zero point 
-    zp_fict:    Mapped[Optional[float]]         # Ficticious ZP to estimate instrumental magnitudes (=20.50)
-    zero_point: Mapped[Optional[float]]         # Estimated Zero Point for this round ('test' photometer round only, else NULL)
-    nsamples:   Mapped[Optional[int]]           # Number of samples for this round
-    duration:   Mapped[Optional[float]]         # Approximate duration, in seconds
-    begin_tstamp: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    end_tstamp:   Mapped[Optional[datetime]] = mapped_column(DateTime)
-
-    # samples per round. Shoudl match the window size
-    # This is not a real column, it s meant for the ORM
-    samples: Mapped[List['Sample']] = relationship(secondary=SamplesRounds, back_populates="rounds")
-
-    def __repr__(self) -> str:
-        return f"Round(id={self.id!r}, session={datestr(self.session)}, role={self.role!r}, seq={self.seq!r} Ts={datestr(self.begin_tstamp)}, Te={datestr(self.end_tstamp)})"
-
-    __table_args__ = (
-        UniqueConstraint(
-            session,
-            seq,
-            role),
-        {})
-
 
 class Summary(Model):
     __tablename__ = "summary_t"
@@ -254,6 +179,8 @@ class Summary(Model):
 
     # This is not a real column, it s meant for the ORM
     photometer: Mapped['Photometer'] = relationship(back_populates="calibrations")
+    # This is not a real column, it s meant for the ORM
+    rounds: Mapped[List['Round']] = relationship(back_populates="summary")
 
     def __repr__(self) -> str:
         return f"Summary(session={datestr(self.session)}, role={self.role!r}, phot_id={self.phot_id!r})"
@@ -263,3 +190,78 @@ class Summary(Model):
             session,
             role),
         {})
+
+
+
+# Samples per round
+# Due to the sliding window collect process, a sample may belong to several rounds
+# This part is not part of the ORM, as it uses the basic Table API
+SamplesRounds = Table(
+    "samples_rounds_t",
+    Model.metadata,
+    Column('round_id', ForeignKey('rounds_t.id'), nullable=False, primary_key=True),
+    Column('sample_id', ForeignKey('samples_t.id'), nullable=False, primary_key=True),
+)
+
+
+class Round(Model):
+    __tablename__ = "rounds_t"
+
+    id:         Mapped[int] = mapped_column(primary_key=True)
+    summ_id:    Mapped[int] = mapped_column(ForeignKey("summary_t.id"), index=True)
+    seq:        Mapped[int] = mapped_column('round', Integer) # Round number form 1..NRounds
+    role:       Mapped[RoleType] = mapped_column(RoleType)
+    #session:    Mapped[datetime] = mapped_column(DateTime)
+    freq:       Mapped[Optional[float]]         # Average of Median method
+    central:    Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True) 
+    stddev:     Mapped[Optional[float]]         # Standard deviation for frequency central estimate
+    mag:        Mapped[Optional[float]]         # magnitiude corresponding to central frequency and summing ficticious zero point 
+    zp_fict:    Mapped[Optional[float]]         # Ficticious ZP to estimate instrumental magnitudes (=20.50)
+    zero_point: Mapped[Optional[float]]         # Estimated Zero Point for this round ('test' photometer round only, else NULL)
+    nsamples:   Mapped[Optional[int]]           # Number of samples for this round
+    duration:   Mapped[Optional[float]]         # Approximate duration, in seconds
+    begin_tstamp: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    end_tstamp:   Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    # This is not a real column, it s meant for the ORM
+    summary: Mapped['Summary'] = relationship(back_populates="rounds")
+    # samples per round. Shoudl match the window size
+    # This is not a real column, it s meant for the ORM
+    samples: Mapped[List['Sample']] = relationship(secondary=SamplesRounds, back_populates="rounds")
+
+    def __repr__(self) -> str:
+        return f"Round(id={self.id!r}, summary_id={datestr(self.summ_id)}, role={self.role!r}, seq={self.seq!r} Ts={datestr(self.begin_tstamp)}, Te={datestr(self.end_tstamp)})"
+
+    __table_args__ = (
+        UniqueConstraint(
+            summ_id,
+            seq,
+            role),
+        {})
+
+
+
+class Sample(Model):
+    __tablename__ = "samples_t"
+
+    id:         Mapped[int] = mapped_column(primary_key=True)
+    tstamp:     Mapped[datetime] = mapped_column(DateTime)
+    role:       Mapped[RoleType] = mapped_column(RoleType)
+    seq:        Mapped[Optional[int]]
+    freq:       Mapped[float]
+    temp_box:   Mapped[Optional[float]]
+
+    # rounds per sample (at least 1...)
+    # This is not a real column, it s meant for the ORM
+    rounds: Mapped[List['Round']] = relationship(secondary=SamplesRounds, back_populates="samples")
+
+    def __repr__(self) -> str:
+        return f"Sample(id={self.id!r}, role={self.role!r} freq={self.freq!r},  seq={self.seq!r})"
+
+    __table_args__ = (
+        UniqueConstraint(
+            tstamp,
+            role),
+        {})
+
+
