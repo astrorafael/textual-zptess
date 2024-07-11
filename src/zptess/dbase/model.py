@@ -9,15 +9,23 @@
 # System wide imports
 # -------------------
 
+import sys
 import enum
 import logging
 
 from typing import Optional, List
 from datetime import datetime
 
-# ===============# # -
+# =====================
 # Third party libraries
-# ===============# # -
+# =====================
+
+
+if sys.version_info[1] < 11:
+    from typing_extensions import Self
+else:
+    from typing import Self
+
 
 from sqlalchemy import select, Enum, Table, Column, Integer, Float, String, DateTime, ForeignKey, UniqueConstraint, PrimaryKeyConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -256,6 +264,19 @@ class Sample(Model):
 
     def __repr__(self) -> str:
         return f"Sample(id={self.id!r}, role={self.role!r} freq={self.freq!r},  seq={self.seq!r})"
+
+    def __lt__(self, other: Self) -> bool:
+        return self.tstamp < other.tstamp
+    def __le__(self, other: Self) -> bool:
+        return self.tstamp <= other.tstamp
+    def __eq__(self, other: Self) -> bool:
+        return self.tstamp == other.tstamp
+    def __ne__(self, other: Self) -> bool:
+        return self.tstamp != other.tstamp
+    def __gt__(self, other: Self) -> bool:
+        return self.tstamp > other.tstamp
+    def __ge__(self, other: Self) -> bool:
+        return self.tstamp >= other.tstamp
 
     __table_args__ = (
         UniqueConstraint(
