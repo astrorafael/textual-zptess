@@ -48,6 +48,9 @@ DESCRIPTION = "TESS-W Zero Database Migration tool"
 # Module global variables
 # -----------------------
 
+ORPHANED_SESSIONS_IN_ROUNDS = set()
+ORPHANED_SESSIONS_IN_SAMPLES = set()
+
 # get the root logger
 log = logging.getLogger(__name__.split('.')[-1])
 
@@ -121,7 +124,7 @@ async def load_summary(path, async_session: async_sessionmaker[AsyncSessionClass
                     log.info("%r", summary)
                     session.add(summary)
 
-ORPHANED_SESSIONS_IN_ROUNDS = set()
+
 async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
@@ -154,21 +157,6 @@ async def load_rounds(path, async_session: async_sessionmaker[AsyncSessionClass]
         log.warn(s)
 
 
-ORPHANED_SESSIONS_IN_SAMPLES = set()
-async def _link_sample_to_rounds(session, sample, meas_session, role):
-    q = select(Summary).where(Summary.session==meas_session, Summary.role==role)
-    summary = (await session.scalars(q)).one_or_none()
-    if not summary:
-        ORPHANED_SESSIONS_IN_SAMPLES.add(meas_session)
-        log.warn("Can't find session %s for this sample %s", meas_session, sample)
-        return False
-    rounds = await summary.awaitable_attrs.rounds # Asunchronous relationship load
-    for r in rounds:
-        if r.begin_tstamp <= sample.tstamp <= r.end_tstamp:
-            sample.rounds.append(r) # no need to do r.append(sample) !!!
-    return True
-
-
 async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
@@ -183,12 +171,18 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
                     row['freq'] = float(row['freq'])
                     row['seq'] = int(row['seq']) if row['seq'] else None
                     sample = Sample(**row)
-                    result = await _link_sample_to_rounds(session, sample, meas_session, row['role'])
-                    if not result:
+                    q = select(Summary).where(Summary.session==meas_session, Summary.role==row['role'])
+                    summary = (await session.scalars(q)).one_or_none()
+                    if not summary:
+                        ORPHANED_SESSIONS_IN_SAMPLES.add(meas_session)
+                        log.warn("Can't find session %s for this sample %s", meas_session, sample)
                         continue
+                    rounds = await summary.awaitable_attrs.rounds # Asunchronous relationship load
+                    for r in rounds:
+                        if r.begin_tstamp <= sample.tstamp <= r.end_tstamp:
+                            sample.rounds.append(r) # no need to do r.append(sample) !!!
                     log.info("%r", sample)
                     session.add(sample)
-    
     log.warn("============================")
     log.warn("ORPHANED SESSIONS IN SAMPLES")
     log.warn("============================")
