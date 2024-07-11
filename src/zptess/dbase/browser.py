@@ -11,10 +11,12 @@
 import os
 import sys
 import csv
+import math
 import logging
 import argparse
 import asyncio
 import datetime
+import statistics
 
 # -------------------
 # Third party imports
@@ -36,7 +38,8 @@ from lica.validators import vfile, vdir, vdate
 # -------------
 
 from .. import __version__
-from .model import Config, Round, Photometer, Sample, Summary, Batch, SamplesRounds
+from .model import Round, Photometer, Sample, Summary
+from .. import CentralTendency
 
 # ----------------
 # Module constants
@@ -51,34 +54,81 @@ DESCRIPTION = "TESS-W Browser tool"
 # get the root logger
 log = logging.getLogger(__name__.split('.')[-1])
 
+# -----------------
+# Auxiliary classes
+# -----------------
+
+class DbgPhotometer(Photometer):
+    pass
+
+class DbgSummary(Summary):
+
+    def central(self, method):
+        if method == CentralTendency.MEAN:
+            return statistics.mean
+        elif method == CentralTendency.MEDIAN:
+            return statistics.median
+        return statistics.mode
+    
+    async def check(self):
+        rounds = await self.awaitable_attrs.rounds
+        N = len(rounds)
+        assert self.nrounds == N, "self.rounds != len(rounds)"
+        freq_method = self.central(self.freq_method)
+        result = freq_method([r.freq for r in rounds])
+        f = self.freq
+        assert math.fabs(result - f) < 0.001, f"computed f={result:.2f}, stored f={f:.2f}"
+        
+        if self.role == Role.TEST:
+            zp_method = self.central(self.zero_point_method)
+            zp_set = [r.zero_point for r in rounds]
+            zp_final = zp_method(zp_set) + self.zp_offset
+            log.info("ZP(%s)%s +  OFFSET (%s) = RESULT (%s)", 
+                self.zero_point_method, zp_set, self.zp_offset, zp_final, )
+            zp_stored = self.zero_point
+            assert math.fabs(zp_final - zp_stored) < 0.001, f"computed f={zp_final:.2f}, stored zp={zp_stored:.2f}"
+        log.info("self check ok")
+
+
+class DbgRound(Round):
+    pass
+
+class DbgSample(Sample):
+    pass
+
 # -------------------
 # Auxiliary functions
 # -------------------       
 
-async def browse_summary(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_summary(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
             log.info("browsing summary for %s", meas_session)
-            q = (select( Photometer.name, Photometer.mac, Summary.role, Summary.calibration, Summary.nrounds, Summary.zero_point).
-                join(Photometer).
-                where(Summary.session == meas_session).
-                order_by(Summary.role.asc())
+            q = (select(DbgPhotometer ,DbgSummary).
+                join(DbgPhotometer).
+                where(DbgSummary.session == meas_session).
+                order_by(DbgSummary.role.asc())
                 )
             result = (await session.execute(q)).all()
             for row in result:
-                log.info(row)
-            
+                phot = row[0]
+                summ = row[1]
+                log.info("name=%-10s, mac=%s, role=%-4s, calib=%s nrounds=%s, zp=%s (%s), freq=%s (%s)", 
+                    phot.name, phot.mac, 
+                    summ.role, summ.calibration, summ.nrounds, summ.zero_point, summ.zero_point_method, summ.freq, summ.freq_method)
+                if check:
+                    await summ.check()
 
 
-async def browse_rounds(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_rounds(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
             log.info("browsing rounds for %s", meas_session)
-            q = (select(Photometer.name, Photometer.mac, Summary, Round).
-                join(Photometer).
-                join(Round).
-                where(Summary.session == meas_session).
-                order_by(Summary.role.asc())
+            q = (select(DbgPhotometer.name, DbgPhotometer.mac, DbgSummary, DbgRound).
+                join(DbgPhotometer).
+                join(DbgRound).
+                where(DbgSummary.session == meas_session).
+                order_by(DbgSummary.role.asc())
                 )
             result = (await session.execute(q)).all()
             log.info("Found %d round results", len(result))
@@ -90,15 +140,15 @@ async def browse_rounds(meas_session, async_session: async_sessionmaker[AsyncSes
             
 
 
-async def browse_samples(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_samples(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
             log.info("browsing samples for %s", meas_session)
-            q = (select(Photometer.name, Photometer.mac, Summary, Round).
-                join(Photometer).
-                join(Round).
-                where(Summary.session == meas_session).
-                order_by(Summary.role.asc())
+            q = (select(DbgPhotometer.name, DbgPhotometer.mac, DbgSummary, DbgRound).
+                join(DbgPhotometer).
+                join(DbgRound).
+                where(DbgSummary.session == meas_session).
+                order_by(DbgSummary.role.asc())
             )
             result = (await session.execute(q)).all()
             log.info("Found %d round results", len(result))
@@ -108,6 +158,10 @@ async def browse_samples(meas_session, async_session: async_sessionmaker[AsyncSe
                 log.info("%s Round %d has %d samples", round_.role, round_.seq, len(samples))
                
 
+async def browse_all(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+    async with async_session() as session:
+        async with session.begin():
+            pass
 
             
 
@@ -121,6 +175,7 @@ TABLE = {
     'summary': browse_summary,
     'rounds': browse_rounds,
     'samples': browse_samples,
+    'all': browse_all,
 }
 
 async def browser(args) -> None:
@@ -128,12 +183,12 @@ async def browser(args) -> None:
         if args.command != 'all':
             func = TABLE[args.command]
             meas_session = args.session
-            await func(meas_session, AsyncSession)
+            await func(meas_session, args.check, AsyncSession)
         else:
             for name in ('summary', 'rounds', 'samples'):
                 meas_session = args.session
                 func = TABLE[name]
-                await func(meas_session, AsyncSession)
+                await func(meas_session, args.check, AsyncSession)
     await engine.dispose()
 
 
@@ -147,9 +202,16 @@ def add_args(parser):
     parser_all = subparser.add_parser('all', help='Browse all data')
 
     parser_summary.add_argument('-s', '--session', metavar='<YYYY-MM-DDTHH:MM:SS>', type=vdate, required = True, help='Session date')
+    parser_summary.add_argument('-c', '--check',  action='store_true',  default=False, help='Consistency check between summary and rounds')
+   
     parser_rounds.add_argument('-s', '--session', type=vdate, required = True, help='Session date')
+    parser_rounds.add_argument('-c', '--check',  action='store_true',  default=False, help='Consistency check between rounds and samples')
+   
     parser_samples.add_argument('-s', '--session', type=vdate, required = True, help='Session date')
+    parser_samples.add_argument('-c', '--check',  action='store_true',  default=False, help='Consistency check?')
+    
     parser_all.add_argument('-s', '--session', type=vdate, required = True, help='Session date')
+    parser_all.add_argument('-c', '--check',  action='store_true',  default=False, help='Consistency check?')
 
 
    
