@@ -68,6 +68,9 @@ def central(method):
         f = statistics.median
     return f
 
+def magnitude(zp, freq):
+    return zp - 2.5*math.log10(freq)
+
 # -----------------
 # Auxiliary classes
 # -----------------
@@ -82,10 +85,14 @@ class DbgSummary(Summary):
         N = len(rounds)
         assert self.nrounds is None or self.nrounds == N, "self.rounds != len(rounds)"
         if self.nrounds is not None:
+            freqs = [r.freq for r in rounds]
+            mags = [magnitude(r.zp_fict, r.freq) for r in rounds]
             freq_method = central(self.freq_method)
-            result = freq_method([r.freq for r in rounds])
+            final_freq = freq_method(freqs)
             f = self.freq
-            assert math.fabs(result - f) < 0.001, f"{self} => computed f={result:.2f}, stored f={f:.2f}"
+            assert math.fabs(final_freq - f) < 0.001, f"{self} => computed f={result:.2f}, stored f={f:.2f}"
+            
+
             if self.role == Role.TEST:
                 zp_method = central(self.zero_point_method)
                 zp_set = [r.zero_point for r in rounds]
@@ -100,14 +107,16 @@ class DbgSummary(Summary):
 class DbgRound(Round):
     
     async def check(self):
+        mag = magnitude(self.zp_fict, self.freq)
+        assert math.fabs(self.mag - mag) < 0.01, f"Computed mag = {mag} is not equal to stored mag {self.mag}"
         samples = sorted(await self.awaitable_attrs.samples)
         N = len(samples)
-        assert self.nsamples == N, "self.nsamples != len(samples)"
+        assert self.nsamples == N, f"self.nsamples = {self.nsamples} not equal to len(samples) = {N}"
         assert self.begin_tstamp is None or self.begin_tstamp == samples[0].tstamp, "Begin round timestamp mismatch"
         assert self.end_tstamp   is None or self.end_tstamp  == samples[-1].tstamp, "End round timestamp mismatch"
-        freq_method = central(self.central)
         for s in samples:
             assert s.role == self.role, f"Round role {self.role} = Sample role {s.role}"
+        freq_method = central(self.central)
         freqs = [s.freq for s in samples]
         freq = freq_method(freqs)
         assert self.freq == freq, f"Round Freq = {self.freq}, Samples {self.central} {freq}"
