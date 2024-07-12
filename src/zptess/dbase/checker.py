@@ -196,40 +196,40 @@ async def get_all_sessions(async_session: async_sessionmaker[AsyncSessionClass])
             q = select(DbgSummary.session).order_by(DbgSummary.role.asc())
             return (await session.scalars(q)).all()
 
-async def browse_summary(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def check_summary(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
-        await browse_summary_single(meas_session, async_session)
+        await check_summary_single(meas_session, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await browse_summary(ses, async_session)
+            await check_summary(ses, async_session)
 
-async def browse_rounds(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def check_rounds(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
-        await browse_rounds_single(meas_session, async_session)
+        await check_rounds_single(meas_session, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await browse_rounds_single(ses, async_session)
+            await check_rounds_single(ses, async_session)
 
-async def browse_samples(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def check_samples(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
-        await browse_samples_single(meas_session, async_session)
+        await check_samples_single(meas_session, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await browse_rounds_single(ses, async_session)
+            await check_rounds_single(ses, async_session)
 
-async def browse_all(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def check_all(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
-        await browse_all_single(meas_session, async_session)
+        await check_all_single(meas_session, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await browse_all_single(ses, async_session)
+            await check_all_single(ses, async_session)
 
 
-async def browse_summary_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def check_summary_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
             q = (select(DbgPhotometer, DbgSummary).
@@ -243,7 +243,7 @@ async def browse_summary_single(meas_session, async_session: async_sessionmaker[
                 summary = row[1]
                 await summary.check(phot.name, phot.mac, meas_session)
 
-async def browse_rounds_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def check_rounds_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
             q = (select(DbgPhotometer, DbgSummary, DbgRound).
@@ -259,16 +259,16 @@ async def browse_rounds_single(meas_session, async_session: async_sessionmaker[A
                 round_ = row[-1]
                 await round_.check(phot.name, phot.mac, meas_session)
             
-async def browse_samples_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def check_samples_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
             log.info("browsing samples for %s", meas_session)
 
 
-async def browse_all_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-    await browse_summary_single(meas_session, async_session)
-    await browse_rounds_single(meas_session, async_session)
-    await browse_samples_single(meas_session, async_session)
+async def check_all_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+    await check_summary_single(meas_session, async_session)
+    await check_rounds_single(meas_session, async_session)
+    await check_samples_single(meas_session, async_session)
             
 
             
@@ -278,13 +278,13 @@ async def browse_all_single(meas_session, async_session: async_sessionmaker[Asyn
 # --------------
 
 TABLE = {
-    'summary': browse_summary,
-    'rounds': browse_rounds,
-    'samples': browse_samples,
-    'all': browse_all,
+    'summary': check_summary,
+    'rounds': check_rounds,
+    'samples': check_samples,
+    'all': check_all,
 }
 
-async def browser(args) -> None:
+async def checker(args) -> None:
     async with engine.begin() as conn:
         if args.command != 'all':
             func = TABLE[args.command]
@@ -330,7 +330,7 @@ def main():
         logging.getLogger("aiosqlite").setLevel(logging.INFO)
     else:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-    asyncio.run(browser(args))
+    asyncio.run(checker(args))
 
 if __name__ == '__main__':
     main()
