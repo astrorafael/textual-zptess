@@ -170,9 +170,10 @@ class DbgRound(Round):
         summary = await self.awaitable_attrs.summary
         total_samples = await summary.awaitable_attrs.samples
         if self.nsamples > 0 and len(total_samples) == 0:
-            log.warn("Although the calibration was made with %d samples, we actually do not have the samples stored.", self.nsamples)
             self.assert_no_timestamps()
-            log.info("[%s] [%s] [%s] Round #%d self check ok", self.n, self.m, self.s, self.seq)
+            log.warn("[%s] [%s] [%s] Round #%d self check ok. NO SAMPLES, (%d) reported.",
+              self.n, self.m, self.s, self.seq, self.nsamples)
+           
             return
         samples = sorted(await self.awaitable_attrs.samples)
         self.assert_samples(samples)
