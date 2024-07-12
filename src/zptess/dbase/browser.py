@@ -103,29 +103,49 @@ class DbgSummary(Summary):
 
 
 class DbgRound(Round):
-    
-    async def check(self):
-        mag = magnitude(self.zp_fict, self.freq)
-        assert math.fabs(self.mag - mag) < 0.01, f"Computed mag = {mag} @ zp = {self.zp_fict} is not equal to stored mag {self.mag}"  
-        summary = await self.awaitable_attrs.summary
-        total_samples = await summary.awaitable_attrs.samples
-        if self.nsamples > 0 and len(total_samples) == 0:
-            log.warn("Although the calibration was made with %d samples, we actually do not have the samples stored.", self.nsamples)
-            assert self.begin_tstamp is None
-            assert self.end_tstamp   is None
-            log.info("self check ok: %s", self)
-            return
-        samples = sorted(await self.awaitable_attrs.samples)
+
+    def assert_round_magnitude(self) -> float:
+        mag = self.zp_fict - 2.5*math.log10(self.freq)
+        assert math.fabs(self.mag - mag) < 0.01, f"Computed mag = {mag} @ zp = {self.zp_fict} is not equal to stored mag {self.mag}"
+
+    def assert_central_freq(self, samples) -> float:
+        '''Computes the central frequnency from its samples'''
+        central_func = central(self.central)
+        freqs = [s.freq for s in samples]
+        freq = central_func(freqs)
+        assert self.freq == freq, f"Round Freq = {self.freq}, Samples {self.central} {freq}"
+        return freq
+
+    def assert_stddev_freq(self, samples, mean) -> float:
+        freqs = [s.freq for s in samples]
+        stddev = statistics.stdev(freqs, mean)
+
+    def assert_no_timestamps(self):
+        assert self.begin_tstamp is None and self.end_tstamp is None, "Expected empty timestam windows"
+
+    def assert_samples(self, samples):
         N = len(samples)
         assert self.nsamples == N, f"self.nsamples = {self.nsamples} not equal to len(samples) = {N}"
         assert self.begin_tstamp == samples[0].tstamp, "Begin round timestamp mismatch"
         assert self.end_tstamp  == samples[-1].tstamp, "End round timestamp mismatch"
         for s in samples:
             assert s.role == self.role, f"Round role {self.role} = Sample role {s.role}"
-        freq_method = central(self.central)
-        freqs = [s.freq for s in samples]
-        freq = freq_method(freqs)
-        assert self.freq == freq, f"Round Freq = {self.freq}, Samples {self.central} {freq}"
+        return samples
+
+
+    async def check(self):
+        self.assert_round_magnitude()  
+        summary = await self.awaitable_attrs.summary
+        total_samples = await summary.awaitable_attrs.samples
+        if self.nsamples > 0 and len(total_samples) == 0:
+            log.warn("Although the calibration was made with %d samples, we actually do not have the samples stored.", self.nsamples)
+            self.assert_no_timestamps()
+            log.info("self check ok: %s", self)
+            return
+        samples = sorted(await self.awaitable_attrs.samples)
+        self.assert_samples(samples)
+        freq = self.assert_central_freq(samples)
+        self.assert_stddev_freq(samples, freq)
         log.info("self check ok: %s", self)
 
 
