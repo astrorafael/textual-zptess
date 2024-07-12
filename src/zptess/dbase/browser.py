@@ -91,8 +91,6 @@ class DbgSummary(Summary):
             final_freq = freq_method(freqs)
             f = self.freq
             assert math.fabs(final_freq - f) < 0.001, f"{self} => computed f={result:.2f}, stored f={f:.2f}"
-            
-
             if self.role == Role.TEST:
                 zp_method = central(self.zero_point_method)
                 zp_set = [r.zero_point for r in rounds]
@@ -108,14 +106,20 @@ class DbgRound(Round):
     
     async def check(self):
         mag = magnitude(self.zp_fict, self.freq)
-        assert math.fabs(self.mag - mag) < 0.01, f"Computed mag = {mag} is not equal to stored mag {self.mag}"
+        assert math.fabs(self.mag - mag) < 0.01, f"Computed mag = {mag} @ zp = {self.zp_fict} is not equal to stored mag {self.mag}"  
+        summary = await self.awaitable_attrs.summary
+        total_samples = await summary.awaitable_attrs.samples
+        if self.nsamples > 0 and len(total_samples) == 0:
+            log.warn("Although the calibration was made with %d samples, we actually do not have the samples stored.", self.nsamples)
+            assert self.begin_tstamp is None
+            assert self.end_tstamp   is None
+            log.info("self check ok: %s", self)
+            return
         samples = sorted(await self.awaitable_attrs.samples)
         N = len(samples)
-        # if self.nsamples > 0 and N == 0:
-        #     log.warn("Although the process was made with %d samples, we actually do not have the samples stored.", self.nsamples)
         assert self.nsamples == N, f"self.nsamples = {self.nsamples} not equal to len(samples) = {N}"
-        assert self.begin_tstamp is None or self.begin_tstamp == samples[0].tstamp, "Begin round timestamp mismatch"
-        assert self.end_tstamp   is None or self.end_tstamp  == samples[-1].tstamp, "End round timestamp mismatch"
+        assert self.begin_tstamp == samples[0].tstamp, "Begin round timestamp mismatch"
+        assert self.end_tstamp  == samples[-1].tstamp, "End round timestamp mismatch"
         for s in samples:
             assert s.role == self.role, f"Round role {self.role} = Sample role {s.role}"
         freq_method = central(self.central)
@@ -126,7 +130,9 @@ class DbgRound(Round):
 
 
 class DbgSample(Sample):
-    pass
+
+    async def check(self):
+        log.info("self check not yet implemented: %s", self)
 
 # -------------------
 # Auxiliary functions
@@ -149,6 +155,14 @@ async def browse_summary(meas_session, check, async_session: async_sessionmaker[
 async def browse_rounds(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
         await browse_rounds_single(meas_session, check, async_session)
+    else:
+        meas_session = await get_all_sessions(async_session)
+        for ses in meas_session:
+            await browse_rounds_single(ses, check, async_session)
+
+async def browse_samples(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+    if meas_session is not None:
+        await browse_samples_single(meas_session, check, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
@@ -203,11 +217,16 @@ async def browse_rounds_single(meas_session, check, async_session: async_session
                 if check:
                     await round_.check()
             
-               
+async def browse_samples_single(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+    async with async_session() as session:
+        async with session.begin():
+            log.info("browsing sampls for %s", meas_session)
+
 
 async def browse_all_single(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     await browse_summary_single(meas_session, check, async_session)
     await browse_rounds_single(meas_session, check, async_session)
+    await browse_samples_single(meas_session, check, async_session)
             
 
             
@@ -219,6 +238,7 @@ async def browse_all_single(meas_session, check, async_session: async_sessionmak
 TABLE = {
     'summary': browse_summary,
     'rounds': browse_rounds,
+    'samples': browse_samples,
     'all': browse_all,
 }
 
