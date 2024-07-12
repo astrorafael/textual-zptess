@@ -80,73 +80,105 @@ class DbgPhotometer(Photometer):
 
 class DbgSummary(Summary):
 
-    async def check(self):
-        rounds = await self.awaitable_attrs.rounds
+    def assert_nrounds(self, rounds):
         N = len(rounds)
-        assert self.nrounds is None or self.nrounds == N, "self.rounds != len(rounds)"
+        assert self.nrounds is None or self.nrounds == N, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed #rounds= {N}, stored #rounds = {self.nrounds})"
+
+    def assert_freq_from_rounds(self, rounds):
+        freqs = [r.freq for r in rounds]
+        mags = [magnitude(r.zp_fict, r.freq) for r in rounds]
+        central_func = central(self.freq_method)
+        freq = central_func(freqs)
+        assert math.fabs(freq - self.freq) < 0.001, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed f={freq:.2f}, stored f={self.freq:.2f}"
+        return freq
+
+    def assert_mag_from_rounds(self, rounds):
+        mags =  [magnitude(r.zp_fict, r.freq) for r in rounds]
+        central_func = central(self.freq_method)
+        mag = central_func(mags)
+        assert math.fabs(mag - self.mag) < 0.005, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f}, stored mag={self.mag:.2f}"
+
+    def assert_zp_from_rounds(self, rounds):
+        zps = [r.zero_point for r in rounds]
+        central_func = central(self.zero_point_method)
+        zp = central_func(zps) + self.zp_offset
+        assert math.fabs(zp - self.zero_point) < 0.001, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed zp={zp:.2f}, stored zp={self.zero_point:.2f}"
+
+
+    async def check(self, name, mac, session):
+        self.n = name
+        self.m = mac
+        self.s = session
+        rounds = await self.awaitable_attrs.rounds
+        self.assert_nrounds(rounds)
         if self.nrounds is not None:
-            freqs = [r.freq for r in rounds]
-            mags = [magnitude(r.zp_fict, r.freq) for r in rounds]
-            freq_method = central(self.freq_method)
-            final_freq = freq_method(freqs)
-            f = self.freq
-            assert math.fabs(final_freq - f) < 0.001, f"{self} => computed f={result:.2f}, stored f={f:.2f}"
+            self.assert_freq_from_rounds(rounds)
+            self.assert_mag_from_rounds(rounds)
             if self.role == Role.TEST:
-                zp_method = central(self.zero_point_method)
-                zp_set = [r.zero_point for r in rounds]
-                zp_final = zp_method(zp_set) + self.zp_offset
-                log.info("ZP(%s)%s +  OFFSET (%s) = RESULT (%s)", 
-                    self.zero_point_method, zp_set, self.zp_offset, zp_final, )
-                zp_stored = self.zero_point
-                assert math.fabs(zp_final - zp_stored) <= 0.011, f"{self} => computed zp={zp_final:.2f}, stored zp={zp_stored:.2f}"
-        log.info("self check ok: %s", self)
+                self.assert_zp_from_rounds(rounds)
+        log.info("[%s] [%s] [%s] Summary self check ok", self.n, self.m, self.s)
 
 
 class DbgRound(Round):
 
     def assert_round_magnitude(self) -> float:
         mag = self.zp_fict - 2.5*math.log10(self.freq)
-        assert math.fabs(self.mag - mag) < 0.01, f"Computed mag = {mag} @ zp = {self.zp_fict} is not equal to stored mag {self.mag}"
+        assert math.fabs(self.mag - mag) < 0.005, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} computed mag = {mag} @ zp = {self.zp_fict}, stored mag {self.mag}"
 
-    def assert_central_freq(self, samples) -> float:
+    def assert_freq_from_samples(self, samples) -> float:
         '''Computes the central frequnency from its samples'''
         central_func = central(self.central)
         freqs = [s.freq for s in samples]
         freq = central_func(freqs)
-        assert self.freq == freq, f"Round Freq = {self.freq}, Samples {self.central} {freq}"
+        assert math.fabs(self.freq - freq) < 0.0005, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored f = {self.freq}, computed f = {freq} [{self.central}]"
         return freq
 
-    def assert_stddev_freq(self, samples, mean) -> float:
+    def assert_stddev_freq_from_samples(self, samples, mean) -> float:
         freqs = [s.freq for s in samples]
         stddev = statistics.stdev(freqs, mean)
+        assert math.fabs(self.stddev - stddev) < 0.005, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored \u03C3 f = {self.stddev}, computed \u03C3 f = {stddev} Hz ({self.central})"
 
     def assert_no_timestamps(self):
-        assert self.begin_tstamp is None and self.end_tstamp is None, "Expected empty timestam windows"
+        assert self.begin_tstamp is None and self.end_tstamp is None, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} Expected empty timestamp windows, got beg={self.begin_tstamp} end={self.end_tstamp}"
 
     def assert_samples(self, samples):
         N = len(samples)
-        assert self.nsamples == N, f"self.nsamples = {self.nsamples} not equal to len(samples) = {N}"
-        assert self.begin_tstamp == samples[0].tstamp, "Begin round timestamp mismatch"
-        assert self.end_tstamp  == samples[-1].tstamp, "End round timestamp mismatch"
+        assert self.nsamples == N, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored NS = {self.nsamples},  computed NS={N}"
+        assert self.begin_tstamp == samples[0].tstamp, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} Begin round timestamp mismatch"
+        assert self.end_tstamp  == samples[-1].tstamp, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} End round timestamp mismatch"
         for s in samples:
-            assert s.role == self.role, f"Round role {self.role} = Sample role {s.role}"
+            assert s.role == self.role, \
+                f"[{self.n}] [{self.m}] [{self.s!s}] Round #role {self.role} = Sample role {s.role}"
         return samples
 
-
-    async def check(self):
+    async def check(self, name, mac, session):
+        self.n = name
+        self.m = mac
+        self.s = session
         self.assert_round_magnitude()  
         summary = await self.awaitable_attrs.summary
         total_samples = await summary.awaitable_attrs.samples
         if self.nsamples > 0 and len(total_samples) == 0:
             log.warn("Although the calibration was made with %d samples, we actually do not have the samples stored.", self.nsamples)
             self.assert_no_timestamps()
-            log.info("self check ok: %s", self)
+            log.info("[%s] [%s] [%s] Round #%d self check ok", self.n, self.m, self.s, self.seq)
             return
         samples = sorted(await self.awaitable_attrs.samples)
         self.assert_samples(samples)
-        freq = self.assert_central_freq(samples)
-        self.assert_stddev_freq(samples, freq)
-        log.info("self check ok: %s", self)
+        freq = self.assert_freq_from_samples(samples)
+        self.assert_stddev_freq_from_samples(samples, freq)
+        log.info("[%s] [%s] [%s] Round #%d self check ok", self.n, self.m, self.s, self.seq)
 
 
 class DbgSample(Sample):
@@ -164,43 +196,42 @@ async def get_all_sessions(async_session: async_sessionmaker[AsyncSessionClass])
             q = select(DbgSummary.session).order_by(DbgSummary.role.asc())
             return (await session.scalars(q)).all()
 
-async def browse_summary(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_summary(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
-        await browse_summary_single(meas_session, check, async_session)
+        await browse_summary_single(meas_session, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await browse_summary(ses, check, async_session)
+            await browse_summary(ses, async_session)
 
-async def browse_rounds(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_rounds(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
-        await browse_rounds_single(meas_session, check, async_session)
+        await browse_rounds_single(meas_session, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await browse_rounds_single(ses, check, async_session)
+            await browse_rounds_single(ses, async_session)
 
-async def browse_samples(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_samples(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
-        await browse_samples_single(meas_session, check, async_session)
+        await browse_samples_single(meas_session, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await browse_rounds_single(ses, check, async_session)
+            await browse_rounds_single(ses, async_session)
 
-async def browse_all(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_all(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
-        await browse_all_single(meas_session, check, async_session)
+        await browse_all_single(meas_session, async_session)
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await browse_all_single(ses, check, async_session)
+            await browse_all_single(ses, async_session)
 
 
-async def browse_summary_single(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_summary_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
-            log.info("browsing summary for session %s", meas_session)
             q = (select(DbgPhotometer, DbgSummary).
                 join(DbgSummary).
                 where(DbgSummary.session == meas_session).
@@ -209,17 +240,12 @@ async def browse_summary_single(meas_session, check, async_session: async_sessio
             result = (await session.execute(q)).all()
             for row in result:
                 phot = row[0]
-                summ = row[1]
-                log.info("Summary => name=%-10s, mac=%s, role=%-4s, calib=%s nrounds=%s, zp=%s (%s), freq=%s (%s)", 
-                    phot.name, phot.mac, 
-                    summ.role, summ.calibration, summ.nrounds, summ.zero_point, summ.zero_point_method, summ.freq, summ.freq_method)
-                if check:
-                    await summ.check()
+                summary = row[1]
+                await summary.check(phot.name, phot.mac, meas_session)
 
-async def browse_rounds_single(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_rounds_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
-            log.info("browsing rounds for %s", meas_session)
             q = (select(DbgPhotometer, DbgSummary, DbgRound).
                 join(DbgSummary, DbgPhotometer.id == DbgSummary.phot_id).
                 join(DbgRound, DbgSummary.id == DbgRound.summ_id).
@@ -227,26 +253,22 @@ async def browse_rounds_single(meas_session, check, async_session: async_session
                 order_by(DbgSummary.role.asc())
             )
             result = (await session.execute(q)).all()
-            log.info("Rounds => found %d round results for session %s", len(result), meas_session)
             for row in result:
                 phot = row[0]
                 summary = row[-2]
                 round_ = row[-1]
-                log.info("Rounds => checking for name=%-10s, mac=%s, session %s", phot.name, phot.mac, meas_session)
-                assert summary.role == round_.role, f"Summary role {summary.role} = Round role {round_.role}"
-                if check:
-                    await round_.check()
+                await round_.check(phot.name, phot.mac, meas_session)
             
-async def browse_samples_single(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+async def browse_samples_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
-            log.info("browsing sampls for %s", meas_session)
+            log.info("browsing samples for %s", meas_session)
 
 
-async def browse_all_single(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-    await browse_summary_single(meas_session, check, async_session)
-    await browse_rounds_single(meas_session, check, async_session)
-    await browse_samples_single(meas_session, check, async_session)
+async def browse_all_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
+    await browse_summary_single(meas_session, async_session)
+    await browse_rounds_single(meas_session, async_session)
+    await browse_samples_single(meas_session, async_session)
             
 
             
@@ -267,12 +289,12 @@ async def browser(args) -> None:
         if args.command != 'all':
             func = TABLE[args.command]
             meas_session = args.session
-            await func(meas_session, args.check, AsyncSession)
+            await func(meas_session, AsyncSession)
         else:
             for name in ('summary', 'rounds', 'samples'):
                 meas_session = args.session
                 func = TABLE[name]
-                await func(meas_session, args.check, AsyncSession)
+                await func(meas_session, AsyncSession)
     await engine.dispose()
 
 
@@ -286,16 +308,10 @@ def add_args(parser):
     parser_all = subparser.add_parser('all', help='Browse all data')
 
     parser_summary.add_argument('-s', '--session', metavar='<YYYY-MM-DDTHH:MM:SS>', type=vdate, default=None, help='Session date')
-    parser_summary.add_argument('-c', '--check',  action='store_true',  default=False, help='Consistency check between summary and rounds')
-   
     parser_rounds.add_argument('-s', '--session', type=vdate, default=None, help='Session date')
-    parser_rounds.add_argument('-c', '--check',  action='store_true',  default=False, help='Consistency check between rounds and samples')
-   
     parser_samples.add_argument('-s', '--session', type=vdate, default=None, help='Session date')
-    parser_samples.add_argument('-c', '--check',  action='store_true',  default=False, help='Consistency check?')
-    
     parser_all.add_argument('-s', '--session', type=vdate, default=None, help='Session date')
-    parser_all.add_argument('-c', '--check',  action='store_true',  default=False, help='Consistency check?')
+ 
 
 
    
