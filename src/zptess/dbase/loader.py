@@ -171,14 +171,16 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
                     row['freq'] = float(row['freq'])
                     row['seq'] = int(row['seq']) if row['seq'] else None
                     sample = Sample(**row)
-                    q = select(Summary).where(Summary.session==meas_session, Summary.role==row['role'])
-                    summary = (await session.scalars(q)).one_or_none()
-                    if not summary:
+                    q = (select(Round).
+                        join(Summary).
+                        where(Summary.session==meas_session, Summary.role==row['role'])
+                    )
+                    rounds_per_summary = (await session.scalars(q)).all()
+                    if not rounds_per_summary:
                         ORPHANED_SESSIONS_IN_SAMPLES.add(meas_session)
                         log.warn("Can't find session %s for this sample %s", meas_session, sample)
                         continue
-                    rounds = await summary.awaitable_attrs.rounds # Asunchronous relationship load
-                    for r in rounds:
+                    for r in rounds_per_summary:
                         if r.begin_tstamp <= sample.tstamp <= r.end_tstamp:
                             sample.rounds.append(r) # no need to do r.append(sample) !!!
                     log.info("%r", sample)
