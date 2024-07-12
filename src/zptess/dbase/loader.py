@@ -207,10 +207,15 @@ TABLE = {
 
 async def loader(args) -> None:
     async with engine.begin() as conn:
-        if args.command != 'all':
+        if args.command not in ('all','nosamples'):
             func = TABLE[args.command]
             path = os.path.join(args.input_dir, args.command + '.csv')
             await func(path, AsyncSession)
+        elif args.command == 'nosamples':
+              for name in ('config','batch', 'photometer', 'summary', 'rounds'):
+                path = os.path.join(args.input_dir, name + '.csv')
+                func = TABLE[name]
+                await func(path, AsyncSession)
         else:
             for name in ('config','batch', 'photometer', 'summary', 'rounds', 'samples'):
                 path = os.path.join(args.input_dir, name + '.csv')
@@ -229,6 +234,7 @@ def add_args(parser):
     parser_summary = subparser.add_parser('summary', help='Load summary CSV')
     parser_rounds = subparser.add_parser('rounds', help='Load rounds CSV')
     parser_samples = subparser.add_parser('samples', help='Load samples CSV')
+    parser_nosamples = subparser.add_parser('nosamples', help='Load all CSVs except samples')
     parser_all = subparser.add_parser('all', help='Load all CSVs')
 
     parser_config.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
@@ -237,6 +243,7 @@ def add_args(parser):
     parser_summary.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_rounds.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_samples.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
+    parser_nosamples.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_all.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
 
 def main():

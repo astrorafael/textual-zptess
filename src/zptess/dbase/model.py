@@ -319,8 +319,9 @@ rounds_view = view(
         Round.__table__.c.id.label("id"),
         Photometer.__table__.c.name.label("name"),
         Photometer.__table__.c.mac.label("mac"),
+        Photometer.__table__.c.model.label("model"),
         Summary.__table__.c.session.label("session"),
-        Round.__table__.c.seq.label("seq"),
+        Round.__table__.c.round.label("round"),
         Round.__table__.c.role.label("role"),
         Round.__table__.c.freq.label("freq"),
         Round.__table__.c.central.label("central"),
@@ -332,6 +333,10 @@ rounds_view = view(
         Round.__table__.c.duration.label("duration"),
         Round.__table__.c.begin_tstamp.label("begin_tstamp"),
         Round.__table__.c.end_tstamp.label("end_tstamp"),
+        Summary.__table__.c.upd_flag.label("upd_flag"),
+        Summary.__table__.c.nrounds.label("nrounds"),
+        Summary.__table__.c.freq.label("mean_freq"),
+        Summary.__table__.c.freq_method.label("freq_method"),
     )
     .select_from(Round.__table__.join(Summary.__table__)).join(Photometer.__table__)
 )

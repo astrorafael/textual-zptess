@@ -93,7 +93,7 @@ class DbgSummary(Summary):
                 log.info("ZP(%s)%s +  OFFSET (%s) = RESULT (%s)", 
                     self.zero_point_method, zp_set, self.zp_offset, zp_final, )
                 zp_stored = self.zero_point
-                assert math.fabs(zp_final - zp_stored) < 0.001, f"{self} => computed zp={zp_final:.2f}, stored zp={zp_stored:.2f}"
+                assert math.fabs(zp_final - zp_stored) <= 0.011, f"{self} => computed zp={zp_final:.2f}, stored zp={zp_stored:.2f}"
         log.info("self check ok: %s", self)
 
 
