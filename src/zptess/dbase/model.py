@@ -289,9 +289,9 @@ summary_view = view(
     name = "summary_v",
     metadata = Model.metadata,
     selectable = select(
+        Summary.__table__.c.id.label("id"),
         Photometer.__table__.c.name.label("name"),
         Photometer.__table__.c.mac.label("mac"),
-        Summary.__table__.c.id.label("id"),
         Summary.__table__.c.session.label("session"),
         Summary.__table__.c.role.label("role"),
         Summary.__table__.c.nrounds.label("nrounds"),
@@ -309,6 +309,31 @@ summary_view = view(
         Summary.__table__.c.comment.label("comment"),
     )
     .select_from(Summary.__table__.join(Photometer.__table__))
+)
+
+# Another view for debugging data
+rounds_view = view(
+    name = "rounds_v",
+    metadata = Model.metadata,
+    selectable = select(
+        Round.__table__.c.id.label("id"),
+        Photometer.__table__.c.name.label("name"),
+        Photometer.__table__.c.mac.label("mac"),
+        Summary.__table__.c.session.label("session"),
+        Round.__table__.c.seq.label("seq"),
+        Round.__table__.c.role.label("role"),
+        Round.__table__.c.freq.label("freq"),
+        Round.__table__.c.central.label("central"),
+        Round.__table__.c.stddev.label("stddev"),
+        Round.__table__.c.mag.label("mag"),
+        Round.__table__.c.zp_fict.label("zp_fict"),
+        Round.__table__.c.zero_point.label("zero_point"),
+        Round.__table__.c.nsamples.label("nsamples"),
+        Round.__table__.c.duration.label("duration"),
+        Round.__table__.c.begin_tstamp.label("begin_tstamp"),
+        Round.__table__.c.end_tstamp.label("end_tstamp"),
+    )
+    .select_from(Round.__table__.join(Summary.__table__)).join(Photometer.__table__)
 )
 
 
