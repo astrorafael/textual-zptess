@@ -111,6 +111,8 @@ class DbgRound(Round):
         assert math.fabs(self.mag - mag) < 0.01, f"Computed mag = {mag} is not equal to stored mag {self.mag}"
         samples = sorted(await self.awaitable_attrs.samples)
         N = len(samples)
+        # if self.nsamples > 0 and N == 0:
+        #     log.warn("Although the process was made with %d samples, we actually do not have the samples stored.", self.nsamples)
         assert self.nsamples == N, f"self.nsamples = {self.nsamples} not equal to len(samples) = {N}"
         assert self.begin_tstamp is None or self.begin_tstamp == samples[0].tstamp, "Begin round timestamp mismatch"
         assert self.end_tstamp   is None or self.end_tstamp  == samples[-1].tstamp, "End round timestamp mismatch"
@@ -164,7 +166,7 @@ async def browse_all(meas_session, check, async_session: async_sessionmaker[Asyn
 async def browse_summary_single(meas_session, check, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
-            log.info("browsing summary for %s", meas_session)
+            log.info("browsing summary for session %s", meas_session)
             q = (select(DbgPhotometer, DbgSummary).
                 join(DbgSummary).
                 where(DbgSummary.session == meas_session).
@@ -174,7 +176,7 @@ async def browse_summary_single(meas_session, check, async_session: async_sessio
             for row in result:
                 phot = row[0]
                 summ = row[1]
-                log.info("name=%-10s, mac=%s, role=%-4s, calib=%s nrounds=%s, zp=%s (%s), freq=%s (%s)", 
+                log.info("Summary => name=%-10s, mac=%s, role=%-4s, calib=%s nrounds=%s, zp=%s (%s), freq=%s (%s)", 
                     phot.name, phot.mac, 
                     summ.role, summ.calibration, summ.nrounds, summ.zero_point, summ.zero_point_method, summ.freq, summ.freq_method)
                 if check:
@@ -191,11 +193,12 @@ async def browse_rounds_single(meas_session, check, async_session: async_session
                 order_by(DbgSummary.role.asc())
             )
             result = (await session.execute(q)).all()
-            log.info("Found %d round results", len(result))
+            log.info("Rounds => found %d round results for session %s", len(result), meas_session)
             for row in result:
                 phot = row[0]
                 summary = row[-2]
                 round_ = row[-1]
+                log.info("Rounds => checking for name=%-10s, mac=%s, session %s", phot.name, phot.mac, meas_session)
                 assert summary.role == round_.role, f"Summary role {summary.role} = Round role {round_.role}"
                 if check:
                     await round_.check()

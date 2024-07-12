@@ -188,6 +188,8 @@ class Summary(Model):
     photometer: Mapped['Photometer'] = relationship(back_populates="calibrations")
     # This is not a real column, it s meant for the ORM
     rounds: Mapped[List['Round']] = relationship(back_populates="summary")
+    # This is not a real column, it s meant for the ORM
+    samples: Mapped[List['Sample']] = relationship(back_populates="summary")
 
     def __repr__(self) -> str:
         return f"Summary(session={datestr(self.session)}, role={self.role!r}, phot_id={self.phot_id!r})"
@@ -252,6 +254,7 @@ class Sample(Model):
     __tablename__ = "samples_t"
 
     id:         Mapped[int] = mapped_column(primary_key=True)
+    summ_id:    Mapped[int] = mapped_column(ForeignKey("summary_t.id"), index=True)
     tstamp:     Mapped[datetime] = mapped_column(DateTime)
     role:       Mapped[RoleType] = mapped_column(RoleType)
     seq:        Mapped[Optional[int]]
@@ -261,6 +264,9 @@ class Sample(Model):
     # rounds per sample (at least 1...)
     # This is not a real column, it s meant for the ORM
     rounds: Mapped[List['Round']] = relationship(secondary=SamplesRounds, back_populates="samples")
+
+    # This is not a real column, it s meant for the ORM
+    summary: Mapped['Summary'] = relationship(back_populates="samples")
 
     def __repr__(self) -> str:
         return f"Sample(id={self.id!r}, role={self.role!r} freq={self.freq!r},  seq={self.seq!r})"

@@ -180,6 +180,8 @@ async def load_samples(path, async_session: async_sessionmaker[AsyncSessionClass
                         ORPHANED_SESSIONS_IN_SAMPLES.add(meas_session)
                         log.warn("Can't find session %s for this sample %s", meas_session, sample)
                         continue
+                    q = select(Summary).where(Summary.session==meas_session, Summary.role==row['role'])
+                    sample.summary = (await session.scalars(q)).one()
                     for r in rounds_per_summary:
                         if r.begin_tstamp <= sample.tstamp <= r.end_tstamp:
                             sample.rounds.append(r) # no need to do r.append(sample) !!!
