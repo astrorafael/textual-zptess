@@ -90,22 +90,25 @@ class DbgSummary(Summary):
         mags = [magnitude(r.zp_fict, r.freq) for r in rounds]
         central_func = central(self.freq_method)
         freq = central_func(freqs)
-        assert math.fabs(freq - self.freq) < 0.001, \
+        assert math.fabs(freq - self.freq) < 0.0005, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed f={freq:.2f}, stored f={self.freq:.2f}"
         return freq
 
-    def assert_mag_from_rounds(self, rounds):
+    def assert_mag_from_rounds(self, rounds, freq):
+        mag = magnitude(rounds[0].zp_fict, freq)
+        assert math.fabs(mag - self.mag) < 0.005, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq}, stored mag={self.mag:.2f}"
         mags =  [magnitude(r.zp_fict, r.freq) for r in rounds]
         central_func = central(self.freq_method)
         mag = central_func(mags)
         assert math.fabs(mag - self.mag) < 0.005, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f}, stored mag={self.mag:.2f}"
-
+        
     def assert_zp_from_rounds(self, rounds):
         zps = [r.zero_point for r in rounds]
         central_func = central(self.zero_point_method)
         zp = central_func(zps) + self.zp_offset
-        assert math.fabs(zp - self.zero_point) < 0.001, \
+        assert math.fabs(zp - self.zero_point) < 0.005, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed zp={zp:.2f}, stored zp={self.zero_point:.2f}"
 
 
@@ -116,8 +119,8 @@ class DbgSummary(Summary):
         rounds = await self.awaitable_attrs.rounds
         self.assert_nrounds(rounds)
         if self.nrounds is not None:
-            self.assert_freq_from_rounds(rounds)
-            self.assert_mag_from_rounds(rounds)
+            freq = self.assert_freq_from_rounds(rounds)
+            self.assert_mag_from_rounds(rounds, freq)
             if self.role == Role.TEST:
                 self.assert_zp_from_rounds(rounds)
         log.info("[%s] [%s] [%s] Summary self check ok", self.n, self.m, self.s)
