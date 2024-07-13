@@ -42,7 +42,7 @@ from .model import Config, Round, Photometer, Sample, Summary, Batch
 # Module constants
 # ----------------
 
-DESCRIPTION = "TESS-W Zero Database Migration tool"
+DESCRIPTION = "TESS-W Calibration Database data loader tool"
 
 # -----------------------
 # Module global variables
@@ -213,6 +213,9 @@ async def loader(args) -> None:
             func = TABLE[args.command]
             path = os.path.join(args.input_dir, args.command + '.csv')
             await func(path, AsyncSession)
+            if args.command == 'all':
+                assert ORPHANED_SESSIONS_IN_ROUNDS == ORPHANED_SESSIONS_IN_SAMPLES, \
+                f"Differnece is {ORPHANED_SESSIONS_IN_ROUNDS - ORPHANED_SESSIONS_IN_SAMPLES}"
         elif args.command == 'nosamples':
               for name in ('config','batch', 'photometer', 'summary', 'rounds'):
                 path = os.path.join(args.input_dir, name + '.csv')

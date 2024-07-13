@@ -148,6 +148,8 @@ class Photometer(Model):
     plug:               Mapped[Optional[str]] = mapped_column(String(16), default="USB-A")
     box:                Mapped[Optional[str]] = mapped_column(String(16), default="FSH714")
     collector:          Mapped[Optional[str]] = mapped_column(String(16), default="standard")  #  Collector model
+    comment:            Mapped[Optional[str]] = mapped_column(String(512)) #  Additional comment for the photometer itself
+
   
     # This is not a real column, it s meant for the ORM
     calibrations: Mapped[List['Summary']] = relationship(back_populates="photometer")
@@ -182,7 +184,7 @@ class Summary(Model):
     freq:               Mapped[Optional[float]]                            # final chosen frequency
     freq_method:        Mapped[CentralTendencyType] = mapped_column(CentralTendencyType, nullable=True)
     mag:                Mapped[Optional[float]]
-    comment:            Mapped[Optional[str]] = mapped_column(String(255)) #  Additional comment for the calibration process
+    comment:            Mapped[Optional[str]] = mapped_column(String(512)) #  Additional comment for the calibration process
 
     # This is not a real column, it s meant for the ORM
     photometer: Mapped['Photometer'] = relationship(back_populates="calibrations")

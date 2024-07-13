@@ -47,7 +47,7 @@ from .. import CentralTendency
 # Module constants
 # ----------------
 
-DESCRIPTION = "TESS-W Browser tool"
+DESCRIPTION = "TESS-W Calibration Database Quality Assurance tool"
 
 # -----------------------
 # Module global variables
@@ -285,7 +285,7 @@ TABLE = {
     'all': check_all,
 }
 
-async def checker(args) -> None:
+async def qa(args) -> None:
     async with engine.begin() as conn:
         if args.command != 'all':
             func = TABLE[args.command]
@@ -331,7 +331,7 @@ def main():
         logging.getLogger("aiosqlite").setLevel(logging.INFO)
     else:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-    asyncio.run(checker(args))
+    asyncio.run(qa(args))
 
 if __name__ == '__main__':
     main()

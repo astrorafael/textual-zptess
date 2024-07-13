@@ -57,7 +57,7 @@ Repository = "https://github.com/astrorafael/textual-zptess.git"
 zptess = "zptess.main:main"
 schema = "zptess.dbase.schema:main"
 loader = "zptess.dbase.loader:main"
-checker = "zptess.dbase.checker:main"
+qa = "zptess.dbase.qa:main"
 
 # pyproject.toml
 # Automatically generates a _version-py file from with Git information

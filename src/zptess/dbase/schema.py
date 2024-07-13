@@ -37,6 +37,8 @@ from .model import Config
 # Module constants
 # ----------------
 
+DESCRIPTION = "TESS-W Calibration Database initial schema generation tool"
+
 # -----------------------
 # Module global variables
 # -----------------------
@@ -60,7 +62,7 @@ def main():
     parser = args_parser(
         name = __name__,
         version = __version__,
-        description = "TESSDB initial Schema generation"
+        description = DESCRIPTION
     )
     args = parser.parse_args(sys.argv[1:])
     configure_log(args)
