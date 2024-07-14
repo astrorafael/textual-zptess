@@ -135,16 +135,12 @@ class DbgRound(Round):
 
     def assert_freq_from_samples(self, samples) -> float:
         '''Computes the central frequnency from its samples'''
-        central_func = central(self.central)
         freqs = [s.freq for s in samples]
+        central_func = central(self.central)
         freq = central_func(freqs)
         assert math.fabs(self.freq - freq) < 0.0005, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored f = {self.freq}, computed f = {freq} [{self.central}]"
-        return freq
-
-    def assert_stddev_freq_from_samples(self, samples, mean) -> float:
-        freqs = [s.freq for s in samples]
-        stddev = statistics.stdev(freqs, mean)
+        stddev = statistics.stdev(freqs, freq)
         assert math.fabs(self.stddev - stddev) < 0.005, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored \u03C3 f = {self.stddev}, computed \u03C3 f = {stddev} Hz ({self.central})"
 
@@ -179,8 +175,7 @@ class DbgRound(Round):
             return
         samples = sorted(await self.awaitable_attrs.samples)
         self.assert_samples(samples)
-        freq = self.assert_freq_from_samples(samples)
-        self.assert_stddev_freq_from_samples(samples, freq)
+        self.assert_freq_from_samples(samples)
         log.info("[%s] [%s] [%s] Round #%d self check ok", self.n, self.m, self.s, self.seq)
 
 
