@@ -176,7 +176,6 @@ class DbgRound(Round):
             self.assert_no_timestamps()
             log.warn("[%s] [%s] [%s] Round #%d self check ok. NO SAMPLES, (%d) reported.",
               self.n, self.m, self.s, self.seq, self.nsamples)
-           
             return
         samples = sorted(await self.awaitable_attrs.samples)
         self.assert_samples(samples)
@@ -222,7 +221,7 @@ async def check_samples(meas_session, async_session: async_sessionmaker[AsyncSes
     else:
         meas_session = await get_all_sessions(async_session)
         for ses in meas_session:
-            await check_rounds_single(ses, async_session)
+            await check_samples_single(ses, async_session)
 
 async def check_all(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     if meas_session is not None:
