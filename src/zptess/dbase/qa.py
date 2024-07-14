@@ -180,7 +180,7 @@ class DbgRound(Round):
         samples = sorted(await self.awaitable_attrs.samples)
         self.assert_samples(samples)
         freq = self.assert_freq_from_samples(samples)
-        #self.assert_stddev_freq_from_samples(samples, freq)
+        self.assert_stddev_freq_from_samples(samples, freq)
         log.info("[%s] [%s] [%s] Round #%d self check ok", self.n, self.m, self.s, self.seq)
 
 
