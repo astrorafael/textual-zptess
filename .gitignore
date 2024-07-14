@@ -165,3 +165,4 @@ src/zptess/_version.py
 test*.py
 *.csv
 mytextualapp.tcss
+*.bak

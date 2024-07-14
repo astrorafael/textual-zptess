@@ -44,7 +44,7 @@ SUMMARY_H = ('name','mac','session','role','calibration','calversion','author','
     'upd_flag','prev_zp','zero_point','zero_point_method','freq','freq_method','mag','comment')
 ROUNDS_H = ('session','round','role','begin_tstamp','end_tstamp','central','freq','stddev',
     'mag','zp_fict','zero_point','nsamples','duration')
-SAMPLES_H = ('session','tstamp','role','seq','freq,temp_box')
+SAMPLES_H = ('session','tstamp','role','seq','freq','temp_box')
 
 # -----------------------
 # Module global variables

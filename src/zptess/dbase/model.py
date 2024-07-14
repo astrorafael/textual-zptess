@@ -148,7 +148,6 @@ class Photometer(Model):
     plug:               Mapped[Optional[str]] = mapped_column(String(16), default="USB-A")
     box:                Mapped[Optional[str]] = mapped_column(String(16), default="FSH714")
     collector:          Mapped[Optional[str]] = mapped_column(String(16), default="standard")  #  Collector model
-    comment:            Mapped[Optional[str]] = mapped_column(String(512)) #  Additional comment for the photometer itself
 
   
     # This is not a real column, it s meant for the ORM
