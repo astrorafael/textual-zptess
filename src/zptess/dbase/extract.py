@@ -20,11 +20,10 @@ import sqlite3
 # Third party imports
 # -------------------
 
-import decouple
-
 from lica.textual.logging import configure_log
 from lica.textual.argparse import args_parser
 from lica.validators import vfile, vdir
+from lica.sqlite import open_database
 
 #--------------
 # local imports
@@ -47,18 +46,9 @@ ROUNDS_H = ('session','round','role','begin_tstamp','end_tstamp','central','freq
     'mag','zp_fict','zero_point','nsamples','duration')
 SAMPLES_H = ('session','tstamp','role','seq','freq,temp_box')
 
-CONFIG_CSV = 'config.csv'
-BATCH_CSV = 'batch.csv'
-PHOTOMETER_CSV = 'photometer.csv'
-SUMMARY_CSV = 'summary.csv'
-ROUNDS_CSV = 'rounds.csv'
-SAMPLES_CSV = 'samples.csv'
-
 # -----------------------
 # Module global variables
 # -----------------------
-
-dbase = decouple.config('SOURCE_DATABASE')
 
 # get the root logger
 log = logging.getLogger(__name__.split('.')[-1])
@@ -67,140 +57,81 @@ log = logging.getLogger(__name__.split('.')[-1])
 # Auxiliary functions
 # -------------------
 
-def extract_batch(conn, path) -> None:
-    with async_session() as 'session':
-        with 'session'.begin():
-            log.info("loading batch data from %s", path)
-            with open(path, newline='') as f:
-                reader = csv.DictReader(f, delimiter=',')
-                for row in reader:
-                    row['email_sent'] = True if row['email_sent'] == '1' else False
-                    row['begin_tstamp'] = datetime.datetime.strptime(row['begin_tstamp'], "%Y-%m-%dT%H:%M:%S") if row['begin_tstamp'] else None
-                    row['end_tstamp'] = datetime.datetime.strptime(row['end_tstamp'], "%Y-%m-%dT%H:%M:%S") if row['end_tstamp'] else None
-                    batch = Batch(**row)
-                    log.info("%r", batch)
-                    'session'.add(batch)
+def write_csv(path: str, header, iterable, delimiter: str =';'):
+    with open(path, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile, delimiter=delimiter)
+        writer.writerow(header)
+        for row in iterable:
+            writer.writerow(row)
 
 
-def extract_config(conn, path) -> None:
-    with async_session() as 'session':
-        with 'session'.begin():
-            log.info("loading config from %s", path)
-            with open(path, newline='') as f:
-                reader = csv.DictReader(f, delimiter=',')
-                for row in reader:
-                    config = Config(**row)
-                    log.info("%r", config)
-                    'session'.add(config)
+def extract_batch(path: str, conn) -> None:
+    log.info("Extracting from batch_t table.")
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT begin_tstamp, end_tstamp, calibrations, email_sent, comment 
+        FROM batch_t 
+        ORDER BY begin_tstamp
+    ''')
+    write_csv(path, BATCH_H, cursor)
 
 
-def extract_photometer(conn, path) -> None:
-    with async_session() as 'session':
-        with 'session'.begin():
-            log.info("loading photometer from %s", path)
-            with open(path, newline='') as f:
-                reader = csv.DictReader(f, delimiter=',')
-                for row in reader:
-                    row['sensor'] = None if not row['sensor'] else row['sensor']
-                    row['firmware'] = None if not row['firmware'] else row['firmware']
-                    row['filter'] = None if not row['filter'] else row['filter']
-                    row['collector'] = None if not row['collector'] else row['collector']
-                    phot = Photometer(**row)
-                    log.info("%r", phot)
-                    'session'.add(phot)
-                    
-
-def extract_summary(conn, path) -> None:
-    with async_session() as 'session':
-        with 'session'.begin():
-            log.info("loading summary from %s", path)
-            with open(path, newline='') as f:
-                reader = csv.DictReader(f, delimiter=',')
-                for row in reader:
-                    mac = row['mac'], name = row['name']
-                    del row['mac'], del row['name']
-                    row[''session''] = datetime.datetime.strptime(row[''session''], "%Y-%m-%dT%H:%M:%S")
-                    row['upd_flag'] = True if row['upd_flag'] == '1' else False
-                    row['calibration'] = None if not row['calibration'] else row['calibration']
-                    for key in ('zero_point', 'zp_offset','prev_zp','freq','mag'):
-                        row[key] = float(row[key]) if row[key] else None
-                    for key in ('zero_point_method', 'freq_method', 'nrounds'):
-                        row[key] = None if not row[key] else row[key]
-                    q = select(Photometer).where(Photometer.mac==mac, Photometer.name==name)
-                    summary = Summary(**row)
-                    phot = (await 'session'.scalars(q)).one()
-                    summary.photometer = phot
-                    log.info("%r", summary)
-                    'session'.add(summary)
+def extract_config(path: str, conn) -> None:
+    log.info("Extracting from config_t table.")
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT section, property AS prop, value
+        FROM config_t 
+        ORDER BY section, prop
+    ''')
+    write_csv(path, CONFIG_H, cursor)
 
 
-def extract_rounds(conn, path) -> None:
-    with async_session() as 'session':
-        with 'session'.begin():
-            log.info("loading rounds from %s", path)
-            with open(path, newline='') as f:
-                reader = csv.DictReader(f, delimiter=',')
-                for row in reader:
-                    row['seq'] = row['round']
-                    del row['round']
-                    meas_session = datetime.datetime.strptime(row[''session''], "%Y-%m-%dT%H:%M:%S")
-                    row['begin_tstamp'] = datetime.datetime.strptime(row['begin_tstamp'], "%Y-%m-%dT%H:%M:%S.%f") if row['begin_tstamp'] else None
-                    row['end_tstamp'] = datetime.datetime.strptime(row['end_tstamp'], "%Y-%m-%dT%H:%M:%S.%f") if row['end_tstamp'] else None
-                    for key in ('freq', 'stddev','mag','zp_fict','zero_point','duration'):
-                        row[key] = float(row[key]) if row[key] else None
-                    q = select(Summary).where(Summary.'session'==meas_session, Summary.'role'==row[''role''])
-                    summary = (await 'session'.scalars(q)).one_or_none()
-                    if not summary:
-                        log.warn("No summary for round: 'session'=%('session')s seq=%(seq)s, 'role'=%('role')s,", row)
-                        ORPHANED_SESSIONS_IN_ROUNDS.add(meas_session)
-                        continue
-                    del row[''session'']
-                    round_ = Round(**row)
-                    round_.summary = summary
-                    log.info("%r", round_)
-                    'session'.add(round_)
-    log.warn("###########################")
-    log.warn("ORPHANED SESSIONS IN ROUNDS")
-    log.warn("###########################")
-    for s in ORPHANED_SESSIONS_IN_ROUNDS:
-        log.warn(s)
+def extract_photometer(path: str, conn) -> None:
+    log.info("Extracting from summary_t table for photometer data.")
+    cursor = conn.cursor()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT DISTINCT name,mac,sensor,model,firmware,filter,plug,box,collector
+        FROM summary_t
+        ORDER BY name
+    ''')
+    write_csv(path, PHOTOMETER_H, cursor)
+ 
+
+def extract_summary(path: str, conn) -> None:
+    log.info("Extracting from summary_t table for summary calibration data.")
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT DISTINCT name,mac,session,role,calibration,calversion,author,nrounds,offset AS zp_offset,
+            upd_flag,prev_zp,zero_point,zero_point_method,freq,freq_method,mag,comment
+        FROM summary_t
+        ORDER BY name
+    ''')
+    write_csv(path, SUMMARY_H, cursor)
 
 
-def extract_samples(conn, path) -> None:
-    with async_session() as 'session':
-        with 'session'.begin():
-            log.info("loading samples from %s", path)
-            with open(path, newline='') as f:
-                reader = csv.DictReader(f, delimiter=',')
-                for row in reader:
-                    meas_session = datetime.datetime.strptime(row[''session''], "%Y-%m-%dT%H:%M:%S")
-                    del row[''session'']
-                    row['tstamp'] = datetime.datetime.strptime(row['tstamp'], "%Y-%m-%dT%H:%M:%S.%f")
-                    row['temp_box'] = float(row['temp_box']) if row['temp_box'] else None
-                    row['freq'] = float(row['freq'])
-                    row['seq'] = int(row['seq']) if row['seq'] else None
-                    sample = Sample(**row)
-                    q = (select(Round).
-                        join(Summary).
-                        where(Summary.'session'==meas_session, Summary.'role'==row[''role''])
-                    )
-                    rounds_per_summary = (await 'session'.scalars(q)).all()
-                    if not rounds_per_summary:
-                        ORPHANED_SESSIONS_IN_SAMPLES.add(meas_session)
-                        log.warn("Can't find 'session' %s for this sample %s", meas_session, sample)
-                        continue
-                    q = select(Summary).where(Summary.'session'==meas_session, Summary.'role'==row[''role''])
-                    sample.summary = (await 'session'.scalars(q)).one()
-                    for r in rounds_per_summary:
-                        if r.begin_tstamp <= sample.tstamp <= r.end_tstamp:
-                            sample.rounds.append(r) # no need to do r.append(sample) !!!
-                    log.info("%r", sample)
-                    'session'.add(sample)
-    log.warn("============================")
-    log.warn("ORPHANED SESSIONS IN SAMPLES")
-    log.warn("============================")
-    for s in ORPHANED_SESSIONS_IN_SAMPLES:
-        log.warn(s)
+def extract_rounds(path: str, conn) -> None:
+    log.info("Extracting from rounds_t table.")
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT DISTINCT session,round,role,begin_tstamp,end_tstamp,central,freq,stddev,mag,zp_fict,zero_point,nsamples,duration
+        FROM rounds_t
+        ORDER BY session, round, role
+    ''')
+    write_csv(path, ROUNDS_H, cursor)
+
+
+
+def extract_samples(path: str, conn) -> None:
+    log.info("Extracting from samples_t table.")
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT session,tstamp,role,seq,freq,temp_box 
+        FROM samples_t 
+        ORDER BY session, tstamp, role 
+    ''')
+    write_csv(path, SAMPLES_H, cursor)
 
 
 # --------------
@@ -217,25 +148,18 @@ TABLE = {
 }
 
 def extract(args) -> None:
-    with engine.begin() as conn:
-        if args.command not in ('all','nosamples'):
-            func = TABLE[args.command]
-            path = os.path.join(args.input_dir, args.command + '.csv')
-            await func(path, AsyncSession)
-            if args.command == 'all':
-                assert ORPHANED_SESSIONS_IN_ROUNDS == ORPHANED_SESSIONS_IN_SAMPLES, \
-                f"Differnece is {ORPHANED_SESSIONS_IN_ROUNDS - ORPHANED_SESSIONS_IN_SAMPLES}"
-        elif args.command == 'nosamples':
-              for name in ('config','batch', 'photometer', 'summary', 'rounds'):
-                path = os.path.join(args.input_dir, name + '.csv')
-                func = TABLE[name]
-                await func(path, AsyncSession)
-        else:
-            for name in ('config','batch', 'photometer', 'summary', 'rounds', 'samples'):
-                path = os.path.join(args.input_dir, name + '.csv')
-                func = TABLE[name]
-                await func(path, AsyncSession)
-    await engine.dispose()
+    connection, _ = open_database(env_var='SOURCE_DATABASE')
+    if args.command not in ('all',):
+        func = TABLE[args.command]
+        path = os.path.join(args.input_dir, args.command + '.csv')
+        func(path, connection)
+        log.info("done.")
+    else:
+        for name in ('config','batch', 'photometer', 'summary', 'rounds', 'samples'):
+            path = os.path.join(args.input_dir, name + '.csv')
+            func = TABLE[name]
+            func(path, connection)
+    connection.close()
 
 
 def add_args(parser):
@@ -248,7 +172,6 @@ def add_args(parser):
     parser_summary = subparser.add_parser('summary', help='Load summary CSV')
     parser_rounds = subparser.add_parser('rounds', help='Load rounds CSV')
     parser_samples = subparser.add_parser('samples', help='Load samples CSV')
-    parser_nosamples = subparser.add_parser('nosamples', help='Load all CSVs except samples')
     parser_all = subparser.add_parser('all', help='Load all CSVs')
 
     parser_config.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
@@ -257,7 +180,6 @@ def add_args(parser):
     parser_summary.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_rounds.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_samples.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
-    parser_nosamples.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_all.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
 
 def main():
