@@ -181,8 +181,17 @@ class DbgRound(Round):
 
 class DbgSample(Sample):
 
-    async def check(self):
-        log.info("self check not yet implemented: %s", self)
+    async def check(self, name, mac, session, summary):
+        self.n = name
+        self.m = mac
+        self.s = session
+        summary2 = await self.awaitable_attrs.summary
+        rounds = await self.awaitable_attrs.rounds
+        rseqs = [r.seq for r in rounds]
+        assert summary.id == summary2.id, \
+            f"[{self.n}] [{self.m}] [{self.s!s}] Mismatched summary ids. Summay id {summary.id} = Sample role {summary2.id}"
+        log.info("[%s] [%s] [%s] Sample #%d in Rounds %s. self check ok", self.n, self.m, self.s, self.id, rseqs)
+
 
 # -------------------
 # Auxiliary functions
@@ -260,7 +269,18 @@ async def check_rounds_single(meas_session, async_session: async_sessionmaker[As
 async def check_samples_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
     async with async_session() as session:
         async with session.begin():
-            log.info("browsing samples for %s", meas_session)
+            q = (select(DbgPhotometer, DbgSummary, DbgSample).
+                join(DbgSummary, DbgPhotometer.id == DbgSummary.phot_id).
+                join(DbgSample, DbgSummary.id == DbgSample.summ_id).
+                filter(DbgSummary.session == meas_session).
+                order_by(DbgSummary.role.asc())
+            )
+            result = (await session.execute(q)).all()
+            for row in result:
+                phot = row[0]
+                summary = row[-2]
+                sample = row[-1]
+                await sample.check(phot.name, phot.mac, meas_session, summary)
 
 
 async def check_all_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
