@@ -19,42 +19,4 @@ Textual widgets have an internal message queue that processes events sequentiall
 If you want to process something in the background you will need to creat a new asyncio Task. Note that you can’t await that task, since that will also prevent the handler from returning.
 
 ## Migration SQL
-- Config
-```SQL
-	SELECT section,property as prop,value
-	FROM config_t
-	ORDER BY section,prop;
-```
-- Photometers
-
-```SQL
-	SELECT DISTINCT name,mac,sensor,model,firmware,filter,plug,box,collector
-	FROM summary_t
-	ORDER BY name;
-```
-
-- Summary
-
-```SQL
-	SELECT DISTINCT name,mac,session,role,calibration,calversion,author,nrounds,offset as zp_offset,
-	upd_flag,prev_zp,zero_point,zero_point_method,freq,freq_method,mag,comment
-	FROM summary_t
-	ORDER BY name;
-```
-
-- Rounds
-```SQL
-	SELECT DISTINCT session,round,role,begin_tstamp,end_tstamp,central,freq,stddev,mag,zp_fict,zero_point,nsamples,duration
-	FROM rounds_t
-	ORDER BY session, round, role;
-```
-- Samples
-
-```SQL
-	SELECT session,tstamp,role,seq,freq,temp_box from samples_t ORDER BY session, tstamp, role;
-```
-
-- Batch
-```SQL
-SELECT * FROM batch_t;
-```
+1.bak => antes de editar stddev frequencies
