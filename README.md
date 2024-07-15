@@ -19,9 +19,17 @@ Textual widgets have an internal message queue that processes events sequentiall
 If you want to process something in the background you will need to creat a new asyncio Task. Note that you can’t await that task, since that will also prevent the handler from returning.
 
 ## Migration SQL
-1.bak => 
-fijado un zp  0.34 y un offset a 0.0 antes de hacer el check de summary
-2.bak
-Cambio del zp de stars3 de 20.50 a 20.44 en la summary_t
-3.bak
-TODAVIA NADA
+
+SELECT name,mac,freq,freq_method,mag, abs(mag- (20.50-2.5*log10(freq))), abs(mag- (20.44-2.5*log10(freq))),
+abs(mag- (20.50-2.5*log10(freq))) < 0.005 as flag250, abs(mag- (20.44-2.5*log10(freq))) < 0.005 as flag244, session,role,offset AS zp_offset
+FROM summary_t
+where flag250 = 0 and flag244 = 1
+ORDER BY name
+
+
+update summary_t
+set mag = 20.50-2.5*log10(freq)
+where mag in (
+	SELECT mag from summary_t
+	where abs(mag- (20.44-2.5*log10(freq))) < 0.005
+) and freq is not null

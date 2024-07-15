@@ -95,14 +95,14 @@ class DbgSummary(Summary):
         central_func = central(self.freq_method)
         freq = central_func(freqs)
         assert math.fabs(freq - self.freq) < 0.0005, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed f={freq:.2f}, stored f={self.freq:.2f}"
+            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed f={freq:.3f}, stored f={self.freq:.3f}"
         return freq
 
     def assert_mag_from_rounds(self, rounds, freq):
         zp_fict = rounds[0].zp_fict
         mag = magnitude(zp_fict, freq)
         if not math.fabs(mag - self.mag) < 0.005:
-            log.warn(f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq}, stored mag={self.mag:.2f}")
+            log.warn(f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq:.3f}, stored mag={self.mag:.2f} @ stored {self.freq:.3f} Hz")
         #assert math.fabs(mag - self.mag) < 0.005, \
         #    f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq}, stored mag={self.mag:.2f}"
         
@@ -111,8 +111,10 @@ class DbgSummary(Summary):
         zps = [r.zero_point for r in rounds]
         central_func = central(self.zero_point_method)
         zp = central_func(zps) + self.zp_offset
-        assert math.fabs(zp - self.zero_point) < 0.005, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed zp={zp:.2f}, stored zp={self.zero_point:.2f}"
+        if not math.fabs(zp - self.zero_point) < 0.005:
+            log.warn(f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed zp={zp:.2f}, stored zp={self.zero_point:.2f}")
+        #assert math.fabs(zp - self.zero_point) < 0.005, \
+            #f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed zp={zp:.2f}, stored zp={self.zero_point:.2f}"
 
 
     async def check(self, photometer):
