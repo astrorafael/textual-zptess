@@ -141,6 +141,7 @@ class DbgRound(Round):
         assert math.fabs(self.freq - freq) < 0.0005, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored f = {self.freq}, computed f = {freq} [{self.central}]"
         stddev = statistics.stdev(freqs, freq)
+        #stddev = statistics.stdev(freqs, freq)
         assert math.fabs(self.stddev - stddev) < 0.005, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored \u03C3 f = {self.stddev}, computed \u03C3 f = {stddev} Hz ({self.central})"
 
