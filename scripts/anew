@@ -1,0 +1,4 @@
+#!/bin/bash
+schema --console
+extract --console all
+loader --console --quiet all

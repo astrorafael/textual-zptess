@@ -74,7 +74,7 @@ where = ["src"]
 
 [tool.setuptools]
 script-files = [
-#    "scripts/tessdb_flush",
+    "scripts/anew",
 ]
 
 # Needed for Textual CSS files
