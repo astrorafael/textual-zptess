@@ -141,9 +141,11 @@ class DbgRound(Round):
         assert math.fabs(self.freq - freq) < 0.0005, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored f = {self.freq}, computed f = {freq} [{self.central}]"
         stddev = statistics.stdev(freqs, freq)
-        #stddev = statistics.stdev(freqs, freq)
-        assert math.fabs(self.stddev - stddev) < 0.005, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored \u03C3 f = {self.stddev}, computed \u03C3 f = {stddev} Hz ({self.central})"
+        if math.fabs(self.stddev - stddev) > 0.005:
+            log.warn("[%s] [%s] [%s] Round #%d mean instead of %s when computing \u03C3", self.n, self.m, self.s, self.seq, self.central)
+            stddev = statistics.stdev(freqs)
+            assert math.fabs(self.stddev - stddev) < 0.005, \
+                f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored \u03C3 f = {self.stddev}, computed \u03C3 f = {stddev} Hz ({self.central})"
 
     def assert_no_timestamps(self):
         assert self.begin_tstamp is None and self.end_tstamp is None, \
