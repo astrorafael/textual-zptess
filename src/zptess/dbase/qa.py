@@ -205,7 +205,7 @@ class DbgSample(Sample):
 async def get_all_sessions(async_session: async_sessionmaker[AsyncSessionClass]) -> List[datetime.datetime]:
     async with async_session() as session:
         async with session.begin():
-            q = select(DbgSummary.session).order_by(DbgSummary.role.asc())
+            q = select(DbgSummary.session.distinct()).order_by(DbgSummary.role.asc())
             return (await session.scalars(q)).all()
 
 async def check_summary(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
@@ -286,14 +286,6 @@ async def check_samples_single(meas_session, async_session: async_sessionmaker[A
                 summary = row[-2]
                 sample = row[-1]
                 await sample.check(photometer, summary)
-
-
-async def check_all_single(meas_session, async_session: async_sessionmaker[AsyncSessionClass]) -> None:
-    await check_summary_single(meas_session, async_session)
-    await check_rounds_single(meas_session, async_session)
-    await check_samples_single(meas_session, async_session)
-            
-
             
 
 # --------------
@@ -304,7 +296,6 @@ TABLE = {
     'summary': check_summary,
     'rounds': check_rounds,
     'samples': check_samples,
-    'all': check_all,
 }
 
 async def qa(args) -> None:

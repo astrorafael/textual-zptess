@@ -20,16 +20,21 @@ If you want to process something in the background you will need to creat a new 
 
 ## Migration SQL
 
-1.bak: 
-- Arreglados los duplicados de fotómetros
-
-
-
+-- oold
 SELECT name,mac,freq,freq_method,mag, abs(mag- (20.50-2.5*log10(freq))), abs(mag- (20.44-2.5*log10(freq))),
 abs(mag- (20.50-2.5*log10(freq))) < 0.005 as flag250, abs(mag- (20.44-2.5*log10(freq))) < 0.005 as flag244, session,role,offset AS zp_offset
 FROM summary_t
 where flag250 = 0 and flag244 = 1
 ORDER BY name
+
+-- new
+SELECT phot_id,freq,freq_method,mag, abs(mag- (20.50-2.5*log10(freq))), abs(mag- (20.44-2.5*log10(freq))),
+abs(mag- (20.50-2.5*log10(freq))) < 0.005 as flag250, abs(mag- (20.44-2.5*log10(freq))) < 0.005 as flag244, session,role, zp_offset
+FROM summary_t
+where flag250 = 0 and flag244 = 1
+ORDER BY phot_id
+
+
 
 
 update summary_t
