@@ -92,7 +92,6 @@ class DbgSummary(Summary):
 
     def assert_freq_from_rounds(self, rounds):
         freqs = [r.freq for r in rounds]
-        mags = [magnitude(r.zp_fict, r.freq) for r in rounds]
         central_func = central(self.freq_method)
         freq = central_func(freqs)
         assert math.fabs(freq - self.freq) < 0.0005, \
