@@ -185,7 +185,7 @@ class DbgSample(Sample):
         m = photometer.mac
         s = summary.session
         rounds = await self.awaitable_attrs.rounds
-        rseqs = [r.seq for r in rounds]
+        rseqs = sorted([r.seq for r in rounds])
         log.info("[%s] [%s] [%s] Sample #%d in Rounds %s. self check ok", n, m, s, self.id, rseqs)
 
 
