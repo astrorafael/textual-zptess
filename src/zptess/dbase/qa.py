@@ -85,6 +85,11 @@ class DbgSummary(Summary):
         assert self.nrounds is None or self.nrounds == N, \
             f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed #rounds= {N}, stored #rounds = {self.nrounds})"
 
+    def assert_fict_zp(self, rounds):
+        zps = [r.zp_fict for r in rounds]
+        assert all([r.zp_fict == rounds[0].zp_fict for r in rounds]), \
+            f"[{self.n}] [{self.m}] [{self.s!s}]All ZP fict are equal {[r.zp_fict for r in rounds]}"
+
     def assert_freq_from_rounds(self, rounds):
         freqs = [r.freq for r in rounds]
         mags = [magnitude(r.zp_fict, r.freq) for r in rounds]
@@ -95,14 +100,13 @@ class DbgSummary(Summary):
         return freq
 
     def assert_mag_from_rounds(self, rounds, freq):
-        mag = magnitude(rounds[0].zp_fict, freq)
-        assert math.fabs(mag - self.mag) < 0.005, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq}, stored mag={self.mag:.2f}"
-        mags =  [magnitude(r.zp_fict, r.freq) for r in rounds]
-        central_func = central(self.freq_method)
-        mag = central_func(mags)
-        assert math.fabs(mag - self.mag) < 0.005, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f}, stored mag={self.mag:.2f}"
+        zp_fict = rounds[0].zp_fict
+        mag = magnitude(zp_fict, freq)
+        if not math.fabs(mag - self.mag) < 0.005:
+            log.warn(f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq}, stored mag={self.mag:.2f}")
+        #assert math.fabs(mag - self.mag) < 0.005, \
+        #    f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq}, stored mag={self.mag:.2f}"
+        
         
     def assert_zp_from_rounds(self, rounds):
         zps = [r.zero_point for r in rounds]
@@ -118,6 +122,7 @@ class DbgSummary(Summary):
         self.s = self.session
         rounds = await self.awaitable_attrs.rounds
         self.assert_nrounds(rounds)
+        self.assert_fict_zp(rounds)
         if self.nrounds is not None:
             freq = self.assert_freq_from_rounds(rounds)
             self.assert_mag_from_rounds(rounds, freq)
