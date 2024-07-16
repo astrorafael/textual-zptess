@@ -59,6 +59,7 @@ schema = "zptess.dbase.schema:main"
 loader = "zptess.dbase.loader:main"
 extract = "zptess.dbase.extract:main"
 qa = "zptess.dbase.qa:main"
+fix = "zptess.dbase.fix:main"
 
 # pyproject.toml
 # Automatically generates a _version-py file from with Git information
