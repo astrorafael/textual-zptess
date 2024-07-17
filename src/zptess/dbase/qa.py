@@ -62,11 +62,12 @@ log = logging.getLogger(__name__.split('.')[-1])
 
 def central(method):
     f = statistics.mode
-    if method == CentralTendency.MEAN:
+    if method == CentralTendency.MEAN.value:
         f = statistics.mean
-    elif method == CentralTendency.MEDIAN:
+    elif method == CentralTendency.MEDIAN.value:
         f = statistics.median
     return f
+
 
 def magnitude(zp, freq):
     return zp - 2.5*math.log10(freq)

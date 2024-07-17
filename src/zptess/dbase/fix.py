@@ -50,11 +50,14 @@ log = logging.getLogger(__name__.split('.')[-1])
 # Auxiliary functions
 # -------------------
 
+def ts2str(ts: datetime.datetime) -> str:
+    return ts.strftime("%Y-%m-%dT%H:%M:%S")
+
 def central(method):
     f = statistics.mode
-    if method == CentralTendency.MEAN:
+    if method == CentralTendency.MEAN.value:
         f = statistics.mean
-    elif method == CentralTendency.MEDIAN:
+    elif method == CentralTendency.MEDIAN.value:
         f = statistics.median
     return f
 
@@ -78,6 +81,7 @@ def samples(conn, session, begin_tstamp, end_tstamp, role):
         SELECT freq FROM samples_t
         WHERE session = :session AND role = :role
         AND tstamp BETWEEN :begin_tstamp AND :end_tstamp
+        ORDER BY tstamp
     ''', params)
     return list(result[0] for result in cursor)
 
@@ -93,19 +97,20 @@ def fix_stddev(conn, new_stddev, old_stddev, name, mac, session, role, seq):
             AND stddev = :old_stddev
         ''', params)
         log.info("[%s] [%s] [%s] Round #%d update old %f => new %f", name, mac, session, seq, old_stddev, new_stddev)
-       
+
 
 def compare_and_fix_stddev(conn, dry_run, name, mac, session, role, seq, freq, freqs, freq_method, stddev):
     central_func = central(freq_method)
     computed_freq = central_func(freqs)
     computed_stddev = statistics.stdev(freqs, computed_freq)
-    if math.fabs(computed_stddev - stddev) > 0.005:
-        log.warn("[%s] [%s] [%s] Round #%d computed \u03C3 %f, != stored \u03C3 %f", 
-            name, mac, session, seq, computed_stddev, stddev)
-        computed2_stddev = statistics.stdev(freqs)
+    if not math.fabs(computed_stddev - stddev) < 0.005:
+        log.warn("[%s] [%s] [%s] Round #%d computed \u03C3(%s %f)=%f, != stored \u03C3(%f)=%f", 
+            name, mac, session, seq, freq_method, computed_freq, computed_stddev, freq, stddev,)
+        freq2 = statistics.mean(freqs)
+        computed2_stddev = statistics.stdev(freqs, freq2)
         if not math.fabs(computed2_stddev - stddev) < 0.005:
-            log.error( "[%s] [%s] [%s] Round #%d Computed \u03C3 %f != Stored \u03C3 %f",
-                name, mac, session, seq, computed_stddev, stddev)
+            log.error( "[%s] [%s] [%s] Round #%d Computed \u03C3(%s %f)=%f != stored\u03C3(%f) %f",
+                name, mac, session, seq, 'mean', freq2, computed2_stddev, freq, stddev)
         elif not dry_run:
             fix_stddev(conn, computed_stddev, stddev, name, mac, session, role, seq)
 
@@ -116,20 +121,17 @@ def fix_rounds_stddev(conn, dry_run, name, mac, session, role) -> None:
         compare_and_fix_stddev(conn, dry_run, name, mac, session, role, seq, freq, freqs, central, stddev)
 
     
-def sessions(conn):
+def sessions(conn, session=None):   
     cursor = conn.cursor()
-    cursor.execute('''
-        SELECT name, mac, session, role FROM summary_t ORDER BY session ASC
-    ''')
+    if session:
+        params = {'session': session}
+        sql = 'SELECT name, mac, session, role FROM summary_t WHERE session = :session ORDER BY session ASC'
+    else:
+        params = {}
+        sql = 'SELECT name, mac, session, role FROM summary_t ORDER BY session ASC'
+    cursor.execute(sql, params)
     return cursor
 
-def selected_session(conn, session):
-    params = {'session': session}
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT name, mac, session, role FROM summary_t WHERE session = :session ORDER BY session ASC
-    ''', params)
-    return cursor.fetchone()
 
 # --------------
 # main functions
@@ -138,12 +140,9 @@ def selected_session(conn, session):
 def fix(args) -> None:
     connection, _ = open_database(env_var='SOURCE_DATABASE')
     if args.stddev:
-        if args.session:
-             name, mac, session, role = selected_session(connection, args.session)
-             fix_rounds_stddev(connection, args.dry_run, name, mac, session, role)
-        else:
-            for name, mac, session, role in sessions(connection):
-                fix_rounds_stddev(connection, args.dry_run, name, mac, session, role)
+        sess = ts2str(args.session) if args.session is not None else None
+        for name, mac, session, role in sessions(connection, sess):
+            fix_rounds_stddev(connection, args.dry_run, name, mac, session, role)
     connection.close()
 
 
