@@ -1,4 +1,8 @@
 #!/bin/bash
+loader_opts=${1:-all}
+echo "schema --console"
 schema --console
+echo "extract --console all"
 extract --console all
-loader --console --quiet all
+echo "loader --console --quiet ${loader_opts}"
+loader --console --quiet ${loader_opts}

@@ -209,13 +209,18 @@ TABLE = {
 
 async def loader(args) -> None:
     async with engine.begin() as conn:
-        if args.command not in ('all','nosamples'):
+        if args.command not in ('all','nosamples','norounds'):
             func = TABLE[args.command]
             path = os.path.join(args.input_dir, args.command + '.csv')
             await func(path, AsyncSession)
             if args.command == 'all':
                 assert ORPHANED_SESSIONS_IN_ROUNDS == ORPHANED_SESSIONS_IN_SAMPLES, \
                 f"Differnece is {ORPHANED_SESSIONS_IN_ROUNDS - ORPHANED_SESSIONS_IN_SAMPLES}"
+        elif args.command == 'norounds':
+              for name in ('config','batch', 'photometer', 'summary'):
+                path = os.path.join(args.input_dir, name + '.csv')
+                func = TABLE[name]
+                await func(path, AsyncSession)
         elif args.command == 'nosamples':
               for name in ('config','batch', 'photometer', 'summary', 'rounds'):
                 path = os.path.join(args.input_dir, name + '.csv')
@@ -238,6 +243,7 @@ def add_args(parser):
     parser_phot = subparser.add_parser('photometer', help='Load photometer CSV')
     parser_summary = subparser.add_parser('summary', help='Load summary CSV')
     parser_rounds = subparser.add_parser('rounds', help='Load rounds CSV')
+    parser_norounds = subparser.add_parser('norounds', help='Load rounds CSV')
     parser_samples = subparser.add_parser('samples', help='Load samples CSV')
     parser_nosamples = subparser.add_parser('nosamples', help='Load all CSVs except samples')
     parser_all = subparser.add_parser('all', help='Load all CSVs')
@@ -247,6 +253,7 @@ def add_args(parser):
     parser_phot.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_summary.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_rounds.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
+    parser_norounds.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_samples.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_nosamples.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
     parser_all.add_argument('-i', '--input-dir', type=vdir, default=os.getcwd(), help='Input CSV directory (default %(default)s)')
