@@ -153,7 +153,7 @@ class DbgRound(Round):
                 self.n, self.m, self.s, self.seq, stddev, self.stddev)
             stddev2 = statistics.stdev(freqs)
             if not math.fabs(self.stddev - stddev2) < 0.005:
-                log.error("[%s] [%s] [%s] Round #%d. computed \u03C3(freq) = %f, stored \u03C3(freq) = ", 
+                log.error("[%s] [%s] [%s] Round #%d. computed \u03C3(freq) = %f, stored \u03C3(freq) = %f", 
                     self.n, self.m, self.s, self.seq, stddev2, self.stddev)
 
 
