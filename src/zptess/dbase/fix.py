@@ -59,7 +59,7 @@ def central(method):
     return f
 
 
-def get_rounds(conn, session, role):
+def rounds(conn, session, role):
     params = {'session': session, 'role': role}
     cursor = conn.cursor()
     cursor.execute('''
@@ -92,37 +92,45 @@ def fix_stddev(conn, new_stddev, old_stddev, name, mac, session, role, seq):
             WHERE session = :session AND role = :role AND round = :seq
             AND stddev = :old_stddev
         ''', params)
-        log.info("[%s] [%s] [%s] Round #%d old %f => new %f", name, mac, session, seq, old_stddev, new_stddev)
+        log.info("[%s] [%s] [%s] Round #%d update old %f => new %f", name, mac, session, seq, old_stddev, new_stddev)
        
 
-def compare_and_fix_stddev(conn, name, mac, session, role, seq, freq, freqs, freq_method, stddev):
+def compare_and_fix_stddev(conn, dry_run, name, mac, session, role, seq, freq, freqs, freq_method, stddev):
     central_func = central(freq_method)
     computed_freq = central_func(freqs)
     computed_stddev = statistics.stdev(freqs, computed_freq)
     if math.fabs(computed_stddev - stddev) > 0.005:
-        log.warn("[%s] [%s] [%s] Round #%d computed \u03C3 %f, != stored \u03C3 %f, ", name, mac, session, seq, computed_stddev, stddev)
+        log.warn("[%s] [%s] [%s] Round #%d computed \u03C3 %f, != stored \u03C3 %f", 
+            name, mac, session, seq, computed_stddev, stddev)
         computed2_stddev = statistics.stdev(freqs)
         if not math.fabs(computed2_stddev - stddev) < 0.005:
-            log.error( f"[{name}] [{mac}] [{session}] Computed \u03C3 {computed_stddev} = Stored \u03C3 {stddev}")
-        else:
+            log.error( "[%s] [%s] [%s] Round #%d Computed \u03C3 %f != Stored \u03C3 %f",
+                name, mac, session, seq, computed_stddev, stddev)
+        elif not dry_run:
             fix_stddev(conn, computed_stddev, stddev, name, mac, session, role, seq)
-        #assert math.fabs(computed_stddev - stddev) < 0.005, f"[{name}] [{mac}] [{session}] Computed \u03C3 {computed_stddev} = Stored \u03C3 {stddev}"
 
-def fix_rounds_stddev(conn, name, mac, session) -> None:
+
+def fix_rounds_stddev(conn, dry_run, name, mac, session) -> None:
     for role in ('ref', 'test'):
-        for begin_tstamp, end_tstsamp, seq, freq, central, stddev in get_rounds(conn, session, role):
+        for begin_tstamp, end_tstsamp, seq, freq, central, stddev in rounds(conn, session, role):
             freqs = samples(conn, session, begin_tstamp, end_tstsamp, role)
-            compare_and_fix_stddev(conn, name, mac, session, role, seq, freq, freqs, central, stddev)
-  
-    
+            compare_and_fix_stddev(conn, dry_run, name, mac, session, role, seq, freq, freqs, central, stddev)
 
+    
 def sessions(conn):
-    log.info("Getting all sessions.")
     cursor = conn.cursor()
     cursor.execute('''
         SELECT DISTINCT name, mac, session FROM summary_t ORDER BY session ASC
     ''')
     return cursor
+
+def selected_session(conn, session):
+    params = {'session': session}
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT DISTINCT name, mac, session FROM summary_t WHERE session = :session ORDER BY session ASC
+    ''', params)
+    return cursor.fetchone()
 
 # --------------
 # main functions
@@ -132,12 +140,11 @@ def fix(args) -> None:
     connection, _ = open_database(env_var='SOURCE_DATABASE')
     if args.stddev:
         if args.session:
-            fix_rounds_stddev(connection, args.session)
+             name, mac, session = selected_session(connection, args.session)
+             fix_rounds_stddev(connection, args.dry_run, name, mac, session)
         else:
             for name, mac, session in sessions(connection):
-                fix_rounds_stddev(connection, name, mac, session)
-
-    log.info("done.")
+                fix_rounds_stddev(connection, args.dry_run, name, mac, session)
     connection.close()
 
 
@@ -147,6 +154,7 @@ def add_args(parser):
     roex = parser_rounds.add_mutually_exclusive_group(required=True)
     roex.add_argument('-t','--stddev',  action='store_true',  help='Fix rounds stddev')
     parser_rounds.add_argument('-s', '--session', type=vdate, default=None, help='Session date')
+    parser_rounds.add_argument('-d', '--dry-run', action='store_true', help='Do not update database')
     
 
 def main():
