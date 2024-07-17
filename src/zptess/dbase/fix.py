@@ -110,17 +110,16 @@ def compare_and_fix_stddev(conn, dry_run, name, mac, session, role, seq, freq, f
             fix_stddev(conn, computed_stddev, stddev, name, mac, session, role, seq)
 
 
-def fix_rounds_stddev(conn, dry_run, name, mac, session) -> None:
-    for role in ('ref', 'test'):
-        for begin_tstamp, end_tstsamp, seq, freq, central, stddev in rounds(conn, session, role):
-            freqs = samples(conn, session, begin_tstamp, end_tstsamp, role)
-            compare_and_fix_stddev(conn, dry_run, name, mac, session, role, seq, freq, freqs, central, stddev)
+def fix_rounds_stddev(conn, dry_run, name, mac, session, role) -> None:
+    for begin_tstamp, end_tstsamp, seq, freq, central, stddev in rounds(conn, session, role):
+        freqs = samples(conn, session, begin_tstamp, end_tstsamp, role)
+        compare_and_fix_stddev(conn, dry_run, name, mac, session, role, seq, freq, freqs, central, stddev)
 
     
 def sessions(conn):
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT DISTINCT name, mac, session FROM summary_t ORDER BY session ASC
+        SELECT name, mac, session, role FROM summary_t ORDER BY session ASC
     ''')
     return cursor
 
@@ -128,7 +127,7 @@ def selected_session(conn, session):
     params = {'session': session}
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT DISTINCT name, mac, session FROM summary_t WHERE session = :session ORDER BY session ASC
+        SELECT name, mac, session, role FROM summary_t WHERE session = :session ORDER BY session ASC
     ''', params)
     return cursor.fetchone()
 
@@ -140,11 +139,11 @@ def fix(args) -> None:
     connection, _ = open_database(env_var='SOURCE_DATABASE')
     if args.stddev:
         if args.session:
-             name, mac, session = selected_session(connection, args.session)
-             fix_rounds_stddev(connection, args.dry_run, name, mac, session)
+             name, mac, session, role = selected_session(connection, args.session)
+             fix_rounds_stddev(connection, args.dry_run, name, mac, session, role)
         else:
-            for name, mac, session in sessions(connection):
-                fix_rounds_stddev(connection, args.dry_run, name, mac, session)
+            for name, mac, session, role in sessions(connection):
+                fix_rounds_stddev(connection, args.dry_run, name, mac, session, role)
     connection.close()
 
 
