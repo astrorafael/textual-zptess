@@ -53,7 +53,8 @@ log = logging.getLogger(__name__.split('.')[-1])
 def ts2str(ts: datetime.datetime) -> str:
     return ts.strftime("%Y-%m-%dT%H:%M:%S")
 
-def central(method):
+def central(method: str):
+    assert method in CentralTendency, f"Statistics central method {method} is not supported"
     f = statistics.mode
     if method == CentralTendency.MEAN.value:
         f = statistics.mean

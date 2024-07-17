@@ -49,6 +49,12 @@ from .. import CentralTendency
 
 DESCRIPTION = "TESS-W Calibration Database Quality Assurance tool"
 
+_CENTRAL_MAP = {
+    CentralTendency.MEAN: statistics.mean,
+    CentralTendency.MEDIAN: statistics.median,
+    CentralTendency.MODE: statistics.mode
+}
+
 # -----------------------
 # Module global variables
 # -----------------------
@@ -60,13 +66,9 @@ log = logging.getLogger(__name__.split('.')[-1])
 # Auxiliar functions
 # ------------------
 
-def central(method):
-    f = statistics.mode
-    if method == CentralTendency.MEAN.value:
-        f = statistics.mean
-    elif method == CentralTendency.MEDIAN.value:
-        f = statistics.median
-    return f
+def central(method: CentralTendency):
+    assert method in CentralTendency, f"Statistics central method {method} is not supported"
+    return _CENTRAL_MAP[method]
 
 
 def magnitude(zp, freq):
