@@ -82,46 +82,46 @@ class DbgSummary(Summary):
 
     def assert_nrounds(self, rounds):
         N = len(rounds)
-        assert self.nrounds is None or self.nrounds == N, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed #rounds= {N}, stored #rounds = {self.nrounds})"
+        if not (self.nrounds is None or self.nrounds == N):
+            log.error("[%s] [%s] [%s] Summary rounds. computed = %d, stored = %d",
+                self.n, self.m, self.s, N, self.nrounds)
 
     def assert_fict_zp(self, rounds):
         zps = [r.zp_fict for r in rounds]
-        assert all([r.zp_fict == rounds[0].zp_fict for r in rounds]), \
-            f"[{self.n}] [{self.m}] [{self.s!s}]All ZP fict are equal {[r.zp_fict for r in rounds]}"
+        if not all([r.zp_fict == rounds[0].zp_fict for r in rounds]):
+            log.error("[%s] [%s] [%s] Summary. Fict ZP: All not are equal %s",
+                self.n, self.m, [r.zp_fict for r in rounds])
 
     def assert_freq_from_rounds(self, rounds):
         freqs = [r.freq for r in rounds]
         central_func = central(self.freq_method)
         freq = central_func(freqs)
-        assert math.fabs(freq - self.freq) < 0.0005, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed f={freq:.3f}, stored f={self.freq:.3f}"
+        if not math.fabs(freq - self.freq) < 0.0005:
+            log.error("[%s] [%s] [%s]  Summary Frequency: computed =%f, stored =%f",
+                self.n, self.m, self.s, freq, self.freq)
         return freq
 
     def assert_mag_from_rounds(self, rounds, freq):
         zp_fict = rounds[0].zp_fict
         mag = magnitude(zp_fict, freq)
         if not math.fabs(mag - self.mag) < 0.005:
-            log.warn(f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq:.3f}, stored mag={self.mag:.2f} @ stored {self.freq:.3f} Hz")
-        #assert math.fabs(mag - self.mag) < 0.005, \
-        #    f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed mag={mag:.2f} from computed freq {freq}, stored mag={self.mag:.2f}"
-        
+            log.warn("[%s] [%s] [%s]  Summary Magnitudes. computed =%f from f=%f, stored mag=%f frm stored f=%f",
+                self.n, self.m, self.s, mag, freq, self.mag, self.freq)
         
     def assert_zp_from_rounds(self, rounds):
         zps = [r.zero_point for r in rounds]
         central_func = central(self.zero_point_method)
         zp = central_func(zps) + self.zp_offset
-        if not math.fabs(zp - self.zero_point) < 0.005:
-            log.warn(f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed zp={zp:.2f}, stored zp={self.zero_point:.2f}")
-        #assert math.fabs(zp - self.zero_point) < 0.005, \
-            #f"[{self.n}] [{self.m}] [{self.s!s}] Summary computed zp={zp:.2f}, stored zp={self.zero_point:.2f}"
-
+        if not math.fabs(zp - self.zero_point) < 0.005:        
+            log.warn("[%s] [%s] [%s]  Summary Zero Points. computed zp=%f, stored zp=%f",
+                self.n, self.m, self.s, zp, self.zero_point)
 
     async def check(self, photometer):
         self.n = photometer.name
         self.m = photometer.mac
         self.s = self.session
         rounds = await self.awaitable_attrs.rounds
+        log.info("[%s] [%s] [%s] Summary self check", self.n, self.m, self.s)
         self.assert_nrounds(rounds)
         self.assert_fict_zp(rounds)
         if self.nrounds is not None:
@@ -129,51 +129,61 @@ class DbgSummary(Summary):
             self.assert_mag_from_rounds(rounds, freq)
             if self.role == Role.TEST:
                 self.assert_zp_from_rounds(rounds)
-        log.info("[%s] [%s] [%s] Summary self check ok", self.n, self.m, self.s)
 
 
 class DbgRound(Round):
 
     def assert_round_magnitude(self) -> float:
         mag = self.zp_fict - 2.5*math.log10(self.freq)
-        assert math.fabs(self.mag - mag) < 0.005, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} computed mag = {mag} @ zp = {self.zp_fict}, stored mag {self.mag}"
+        if not math.fabs(self.mag - mag) < 0.005:
+            log.error("[%s] [%s] [%s] Round #%d. Magnitudes: computed = %f @ zp = %f, stored = %f", 
+                self.n, self.m, self.s, self.seq, mag, self.zp_fict, self.mag)
 
     def assert_freq_from_samples(self, samples) -> float:
         '''Computes the central frequnency from its samples'''
         freqs = [s.freq for s in samples]
         central_func = central(self.central)
         freq = central_func(freqs)
-        assert math.fabs(self.freq - freq) < 0.0005, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored f = {self.freq}, computed f = {freq} [{self.central}]"
+        if not math.fabs(self.freq - freq) < 0.0005:
+            log.error("[%s] [%s] [%s] Round #%d. %s Frequency: computed f = %f, stored = %f", 
+                self.n, self.m, self.s, self.seq, self.central, freq, self.freq)
         stddev = statistics.stdev(freqs, freq)
         if math.fabs(self.stddev - stddev) > 0.005:
-            log.warn("[%s] [%s] [%s] Round #%d mean instead of %s when computing \u03C3", self.n, self.m, self.s, self.seq, self.central)
-            stddev = statistics.stdev(freqs)
-            assert math.fabs(self.stddev - stddev) < 0.005, \
-                f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored \u03C3 f = {self.stddev}, computed \u03C3 f = {stddev} Hz ({self.central})"
+            log.warn("[%s] [%s] [%s] Round #%d. computed \u03C3(freq) = %f, stored \u03C3(freq) = %f. May be can be fixed.", 
+                self.n, self.m, self.s, self.seq, stddev, self.stddev)
+            stddev2 = statistics.stdev(freqs)
+            if not math.fabs(self.stddev - stddev2) < 0.005:
+                log.error("[%s] [%s] [%s] Round #%d. computed \u03C3(freq) = %f, stored \u03C3(freq) = ", 
+                    self.n, self.m, self.s, self.seq, stddev2, self.stddev)
+
 
     def assert_no_timestamps(self):
-        assert self.begin_tstamp is None and self.end_tstamp is None, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} Expected empty timestamp windows, got beg={self.begin_tstamp} end={self.end_tstamp}"
-
+        if not (self.begin_tstamp is None and self.end_tstamp is None):
+            log.error("[%s] [%s] [%s] Round #%d. Expected empty time window, got from %s to %s", 
+                self.n, self.m, self.s, self.seq, self.begin_tstamp, self.end_tstamp)
+        
     def assert_samples(self, samples):
         N = len(samples)
-        assert self.nsamples == N, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} stored NS = {self.nsamples},  computed NS={N}"
-        assert self.begin_tstamp == samples[0].tstamp, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} Begin round timestamp mismatch"
-        assert self.end_tstamp  == samples[-1].tstamp, \
-            f"[{self.n}] [{self.m}] [{self.s!s}] Round #{self.seq} End round timestamp mismatch"
+        if not self.nsamples == N:
+            log.error("[%s] [%s] [%s] Round #%d. Number of samples. Computed = %d, Stored = %d", 
+                self.n, self.m, self.s, self.seq, N, self.nsamples)
+        if not self.begin_tstamp == samples[0].tstamp:
+            log.error("[%s] [%s] [%s] Round #%d. Begin round timestamp mismatch. Round = %s, Samples[0] = %s", 
+                self.n, self.m, self.s, self.seq, self.begin_tstamp, samples[0].tstamp)
+        if not self.end_tstamp  == samples[-1].tstamp:
+            log.error("[%s] [%s] [%s] Round #%d. End round timestamp mismatch. Round = %s, Samples[-1] = %s", 
+                self.n, self.m, self.s, self.seq, self.end_tstamp, samples[-1].tstamp)
         for s in samples:
-            assert s.role == self.role, \
-                f"[{self.n}] [{self.m}] [{self.s!s}] Round #role {self.role} = Sample role {s.role}"
-        return samples
+            if not s.role == self.role:
+                log.error("[%s] [%s] [%s] Round #%d. Wrong roles Round = %s, Samples[s] = %s", 
+                    self.n, self.m, self.s, self.seq, self.role, s.role)
+
 
     async def check(self,photometer, summary):
         self.n = photometer.name
         self.m = photometer.mac
         self.s = summary.session
+        log.info("[%s] [%s] [%s] Round #%d self check", self.n, self.m, self.s, self.seq)
         self.assert_round_magnitude()  
         total_samples = await summary.awaitable_attrs.samples
         if self.nsamples > 0 and len(total_samples) == 0:
@@ -184,7 +194,6 @@ class DbgRound(Round):
         samples = sorted(await self.awaitable_attrs.samples)
         self.assert_samples(samples)
         self.assert_freq_from_samples(samples)
-        log.info("[%s] [%s] [%s] Round #%d self check ok", self.n, self.m, self.s, self.seq)
 
 
 class DbgSample(Sample):
