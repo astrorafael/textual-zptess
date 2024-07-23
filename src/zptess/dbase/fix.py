@@ -22,7 +22,7 @@ import statistics
 # Third party imports
 # -------------------
 
-from lica.textual.logging import configure_log
+from lica.textual.logging import configure_logging
 from lica.textual.argparse import args_parser
 from lica.sqlite import open_database
 from lica.validators import vdate
@@ -165,7 +165,7 @@ def main():
     )
     add_args(parser)
     args = parser.parse_args(sys.argv[1:])
-    configure_log(args)
+    configure_logging(args)
     fix(args)
 
 if __name__ == '__main__':

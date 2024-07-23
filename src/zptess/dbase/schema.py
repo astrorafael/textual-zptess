@@ -21,7 +21,7 @@ from datetime import datetime
 # -------------------
 
 from lica.textual.argparse import args_parser
-from lica.textual.logging import configure_log
+from lica.textual.logging import configure_logging
 from lica.sqlalchemy.asyncio.dbase import url, engine, Model
 
 #--------------
@@ -65,7 +65,7 @@ def main():
         description = DESCRIPTION
     )
     args = parser.parse_args(sys.argv[1:])
-    configure_log(args)
+    configure_logging(args)
     if args.verbose:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         logging.getLogger("aiosqlite").setLevel(logging.INFO)

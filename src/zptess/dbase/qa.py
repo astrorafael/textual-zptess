@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from lica.sqlalchemy.asyncio.dbase import engine, AsyncSession
 from lica.asyncio.photometer import Model as PhotModel, Role, Sensor
-from lica.textual.logging import configure_log
+from lica.textual.logging import configure_logging
 from lica.textual.argparse import args_parser
 from lica.validators import vfile, vdir, vdate
 
@@ -350,7 +350,7 @@ def main():
     )
     add_args(parser)
     args = parser.parse_args(sys.argv[1:])
-    configure_log(args)
+    configure_logging(args)
     if args.verbose:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         logging.getLogger("aiosqlite").setLevel(logging.INFO)
